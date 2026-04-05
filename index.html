@@ -472,7 +472,7 @@ function showSplash() {
           u.isAdmin=prof.is_admin||e===ADMIN;
           u.profile_emoji=prof.profile_emoji||'😊';
           u.grade=prof.grade||null;
-          u.job_interest=prof.job_interest||null;
+          u.job_interest=prof.job_interest||prof.employment||prof.employment_status||null;
           u.employment=prof.employment||null;
           u.resume_url=prof.resume_url||null;
           u.avatar_url=prof.avatar_url||null;
@@ -1324,7 +1324,9 @@ function renderEditProfile() {
         if(vals[key]===o) op.selected=true;
         s.appendChild(op);
       });
-      s.addEventListener('change',()=>vals[key]=s.value);
+      // Set initial value immediately so save works without changing dropdown
+      vals[key] = s.value || vals[key] || '';
+      s.addEventListener('change',()=>{ vals[key]=s.value; });
       s.addEventListener('focus',()=>s.style.borderColor='var(--primary)');
       s.addEventListener('blur',()=>s.style.borderColor='var(--border)');
       return div({style:{marginBottom:16}},
