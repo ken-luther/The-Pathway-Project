@@ -546,6 +546,7 @@ function showSplash() {
         id:res.data.user.id,email:e,full_name:name,is_admin:e===ADMIN,
         onboarding_complete:true,xp_total:0,
         // New column names
+        profile_emoji:'😊',
         grade:sv.grade||null,
         employment:sv.employment||null,
         has_bank:sv.has_bank||null,
@@ -775,11 +776,9 @@ function LeaderboardTab() {
         const userBadges = allBadges.filter(b=>b.user_id===p2.id);
         const isMe = S.user && p2.id === S.user.id;
         const medals = ['🥇','🥈','🥉'];
-        const avatarEl = p2.avatar_url
-          ? h('img',{src:p2.avatar_url,style:{width:46,height:46,borderRadius:'50%',objectFit:'cover',border:'2px solid var(--border)',flexShrink:0}})
-          : div({style:{width:46,height:46,borderRadius:'50%',background:'linear-gradient(135deg,var(--primary),var(--teal))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:700,color:'#fff',flexShrink:0,border:'2px solid var(--border)'}},
-              (p2.full_name||p2.email||'?')[0].toUpperCase()
-            );
+        const avatarEl = div({style:{width:46,height:46,borderRadius:'50%',background:'linear-gradient(135deg,var(--primary),var(--teal))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,flexShrink:0,border:'2px solid var(--border)',boxShadow:'0 2px 6px rgba(0,0,0,.08)'}},
+            p2.profile_emoji || '😊'
+          );
         const row = div({class:'card',style:{
           marginBottom:8,padding:'12px 14px',
           background: isMe ? 'linear-gradient(135deg,#EFF6FF,#DBEAFE)' : '#fff',
@@ -910,9 +909,7 @@ function renderUserProfile() {
     div({class:'screen'},
       div({style:{background:'linear-gradient(160deg,var(--navy),#1A4080)',padding:'44px 22px 28px',textAlign:'center',color:'#fff'}},
         btn({class:'btn btn-g',style:{color:'rgba(255,255,255,.7)',width:'auto',marginBottom:16,padding:'6px 0',textAlign:'left'},'click':()=>{S.tab='board';renderApp();}},'← Back'),
-        p2.avatar_url
-          ? h('img',{src:p2.avatar_url,style:{width:72,height:72,borderRadius:'50%',objectFit:'cover',border:'3px solid rgba(255,255,255,.4)',margin:'0 auto 10px',display:'block'}})
-          : div({style:{width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,rgba(255,255,255,.25),rgba(255,255,255,.1))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,fontWeight:700,color:'#fff',border:'3px solid rgba(255,255,255,.3)',margin:'0 auto 10px'}},(p2.full_name||p2.email||'U')[0].toUpperCase()),
+        div({style:{width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,rgba(255,255,255,.2),rgba(255,255,255,.1))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:38,margin:'0 auto 10px',border:'3px solid rgba(255,255,255,.3)'}},(p2.profile_emoji||'😊')),
         h('h2',{style:{color:'#fff',fontFamily:"'DM Serif Display',serif",fontWeight:400,fontSize:22}},p2.full_name||p2.email?.split('@')[0]||'User'),
         p2.grade ? p({style:{color:'rgba(255,255,255,.65)',fontSize:13,marginTop:4}},p2.grade) : null,
         span({class:'xpb',style:{marginTop:12,display:'inline-flex'}},'⚡ '+(p2.xp_total||0)+' XP')
@@ -953,8 +950,7 @@ function renderClassDetail(allProfiles, allBadges, backFn) {
           const medals=['🥇','🥈','🥉'];
           return div({class:'card',style:{marginBottom:8,padding:'12px 14px',cursor:'pointer',display:'flex',alignItems:'center',gap:12},'click':()=>{_lbSelProfile={...p2,badges:userBadges};renderUserProfile();}},
             div({style:{width:28,textAlign:'center',fontSize:i<3?20:14,fontWeight:700,color:i<3?'inherit':'var(--muted)',flexShrink:0}},i<3?medals[i]:'#'+(i+1)),
-            p2.avatar_url ? h('img',{src:p2.avatar_url,style:{width:44,height:44,borderRadius:'50%',objectFit:'cover',border:'2px solid var(--border)',flexShrink:0}})
-              : div({style:{width:44,height:44,borderRadius:'50%',background:'linear-gradient(135deg,var(--primary),var(--teal))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:700,color:'#fff',flexShrink:0}},(p2.full_name||'?')[0].toUpperCase()),
+            div({style:{width:44,height:44,borderRadius:'50%',background:'linear-gradient(135deg,var(--primary),var(--teal))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0,border:'2px solid var(--border)'}},(p2.profile_emoji||'😊')),
             div({style:{flex:1,minWidth:0}},
               div({style:{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p2.full_name||p2.email?.split('@')[0]||'User'),
               div({style:{fontSize:12,color:'var(--muted)',marginTop:3}},'⚡ '+(p2.xp_total||0)+' XP · 🏆 '+userBadges.length+' badges')
@@ -1009,38 +1005,11 @@ function ProfileTab(allLessons,doneLessons,totalXP,level) {
   });
 
   // Avatar section
-  const avatarUrl=S.user.avatar_url||null;
-  const avatarEl=avatarUrl
-    ? h('img',{src:avatarUrl,style:{width:64,height:64,borderRadius:'50%',objectFit:'cover',border:'3px solid rgba(255,255,255,.4)',cursor:'pointer'}})
-    : div({style:{width:64,height:64,borderRadius:'50%',background:'linear-gradient(135deg,rgba(255,255,255,.25),rgba(255,255,255,.1))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,fontWeight:700,color:'#fff',border:'3px solid rgba(255,255,255,.3)',cursor:'pointer',backdropFilter:'blur(10px)'}},
-        ((S.user.name||S.user.email||'U')[0]).toUpperCase()
-      );
-
-  const fileInput=h('input',{type:'file',accept:'image/*',style:{display:'none'}});
-  fileInput.addEventListener('change',async(e)=>{
-    const file=e.target.files[0];
-    if(!file) return;
-    if(file.size>5*1024*1024){alert('Image must be under 5MB');return;}
-    const loadingDiv=document.getElementById('avatar-loading');
-    if(loadingDiv) loadingDiv.style.display='flex';
-    const url=await uploadAvatar(file,S.user.id||'local',S.token);
-    if(url){
-      S.user.avatar_url=url;
-      localStorage.setItem('pw_u',JSON.stringify(S.user));
-      if(S.user.id&&S.token) await sbPatch('profiles','?id=eq.'+S.user.id,{avatar_url:url},S.token);
-      S.tab='profile';renderApp();
-    } else {
-      if(loadingDiv) loadingDiv.style.display='none';
-      alert('Upload failed. Make sure the avatars storage bucket exists in Supabase.');
-    }
-  });
-  avatarEl.addEventListener('click',()=>{_editProfile=true;renderApp();});
-
-  const avatarContainer=div({style:{position:'relative',display:'inline-block',margin:'0 auto 12px'}},
+  const profileEmoji = S.user.profile_emoji || '😊';
+  const avatarEl = div({style:{width:64,height:64,borderRadius:'50%',background:'linear-gradient(135deg,var(--primary),var(--teal))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,cursor:'pointer',boxShadow:'0 4px 12px rgba(0,0,0,.2)',border:'3px solid rgba(255,255,255,.4)',margin:'0 auto 2px'},'click':()=>{_editProfile=true;renderApp();}},profileEmoji);
+  const avatarContainer = div({style:{position:'relative',display:'inline-block',margin:'0 auto 12px'}},
     avatarEl,
-    div({id:'avatar-loading',style:{display:'none',position:'absolute',inset:0,borderRadius:'50%',background:'rgba(0,0,0,.5)',alignItems:'center',justifyContent:'center'}},div({class:'spin'})),
-    div({style:{position:'absolute',bottom:0,right:0,width:24,height:24,borderRadius:'50%',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,cursor:'pointer',boxShadow:'0 2px 6px rgba(0,0,0,.3)',border:'2px solid #fff'},'click':()=>fileInput.click()},'✏️'),
-    fileInput
+    div({style:{position:'absolute',bottom:0,right:0,width:22,height:22,borderRadius:'50%',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,cursor:'pointer',boxShadow:'0 2px 6px rgba(0,0,0,.3)',border:'2px solid #fff'},'click':()=>{_editProfile=true;renderApp();}},'✏️')
   );
 
   return div({class:'screen'},
@@ -1279,39 +1248,36 @@ function renderEditProfile() {
   ];
 
   function build() {
-    const avatarUrl = S.user.avatar_url || null;
-    const avatarEl = avatarUrl
-      ? h('img',{src:avatarUrl,id:'ep-avatar',style:{width:72,height:72,borderRadius:'50%',objectFit:'cover',border:'3px solid var(--primary)',boxShadow:'0 3px 12px rgba(26,86,219,.15)',cursor:'pointer'}})
-      : div({id:'ep-avatar',style:{width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,var(--primary),var(--teal))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,fontWeight:700,color:'#fff',border:'3px solid var(--primary)',boxShadow:'0 3px 12px rgba(26,86,219,.15)',cursor:'pointer'}},
-          (vals.name[0]||'U').toUpperCase()
-        );
+    const EMOJIS = ['😊','😎','🤩','🥳','💪','🌟','🔥','💯','🎯','🦁','🐯','🦊','🐺','🦅','🌈','💎','⚡','🏆','🎓','💼','🚀','🎤','📊','💰','🌱','🛡️','📈','🎸','🏀','⚽','🎮','🎨','🎵','🌊','🏔️','🌸'];
+    let selectedEmoji = S.user.profile_emoji || '😊';
 
-    const fileInput = h('input',{type:'file',accept:'image/*',style:{display:'none'}});
-    fileInput.addEventListener('change', async(e)=>{
-      const file=e.target.files[0];
-      if(!file) return;
-      if(file.size>5*1024*1024){uploadStatus='Image must be under 5MB';rebuildMsg();return;}
-      uploadStatus='Uploading...';rebuildMsg();
-      const url=await uploadAvatar(file,S.user.id||'local',S.token);
-      if(url){
-        S.user.avatar_url=url;
-        localStorage.setItem('pw_u',JSON.stringify(S.user));
-        if(S.user.id&&S.token) sbPatch('profiles','?id=eq.'+S.user.id,{avatar_url:url},S.token);
-        uploadStatus='✅ Photo saved!';
-        mount(buildScreen());
-      } else {
-        uploadStatus='Upload failed. Check Supabase storage bucket.';rebuildMsg();
-      }
-    });
-    avatarEl.addEventListener('click',()=>fileInput.click());
+    function buildEmojiPicker() {
+      const picker = document.getElementById('ep-emoji-picker');
+      if(!picker) return;
+      picker.innerHTML='';
+      EMOJIS.forEach(emoji=>{
+        const b=h('button',{style:{
+          width:42,height:42,borderRadius:10,
+          border:selectedEmoji===emoji?'3px solid var(--primary)':'2px solid var(--border)',
+          background:selectedEmoji===emoji?'var(--primary-light)':'#fff',
+          fontSize:22,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
+          boxShadow:selectedEmoji===emoji?'0 0 0 2px rgba(26,86,219,.15)':'none',transition:'all .12s'
+        },'click':()=>{
+          selectedEmoji=emoji;
+          const prev=document.getElementById('ep-emoji-preview');
+          if(prev) prev.textContent=emoji;
+          buildEmojiPicker();
+        }},emoji);
+        picker.appendChild(b);
+      });
+    }
 
     function rebuildMsg(){
       const el=document.getElementById('ep-upload-msg');
       if(el) el.textContent=uploadStatus;
     }
 
-    // Input helper
-    function mkInp(lbl, key, placeholder, type='text') {
+        function mkInp(lbl, key, placeholder, type='text') {
       const i = h('input',{type,placeholder,value:vals[key]||'',
         style:{padding:'15px 18px',border:'2.5px solid var(--border)',borderRadius:12,fontSize:16,fontFamily:'inherit',color:'var(--text)',background:'#fff',outline:'none',width:'100%',transition:'border-color .2s'}
       });
@@ -1350,6 +1316,7 @@ function renderEditProfile() {
       S.user.grade = vals.grade;
       S.user.job_interest = vals.job_interest;
       S.user.employment = vals.job_interest;
+      S.user.profile_emoji = selectedEmoji;
       localStorage.setItem('pw_u',JSON.stringify(S.user));
       // Save to Supabase
       if(S.user.id && S.token){
@@ -1360,6 +1327,7 @@ function renderEditProfile() {
           employment:vals.job_interest||null,
           employment_status:vals.job_interest||null,
           resume_url:S.user.resume_url||null,
+          profile_emoji:selectedEmoji,
         },S.token);
       }
       saveBtnEl.textContent='Save Changes';saveBtnEl.disabled=false;
@@ -1380,16 +1348,18 @@ function renderEditProfile() {
       div({class:'screen'},
         div({style:{padding:'24px 22px 50px'}},
 
-          // Avatar card
-          div({class:'card',style:{textAlign:'center',marginBottom:16,padding:'24px'}},
-            div({style:{position:'relative',display:'inline-block',marginBottom:12}},
-              avatarEl,
-              div({style:{position:'absolute',bottom:2,right:2,width:26,height:26,borderRadius:'50%',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,cursor:'pointer',boxShadow:'0 2px 6px rgba(0,0,0,.3)',border:'2.5px solid #fff'},'click':()=>fileInput.click()},'📷'),
-              fileInput
-            ),
-            div({id:'ep-upload-msg',style:{fontSize:13,color:'var(--muted)',minHeight:18,fontWeight:500}},uploadStatus),
-            p({style:{fontSize:12,color:'var(--muted)',marginTop:4}},'Tap photo to change')
-          ),
+          // Emoji avatar card
+          (()=>{
+            const previewEl = div({id:'ep-emoji-preview',style:{fontSize:56,lineHeight:1,marginBottom:12}},selectedEmoji);
+            const pickerEl = div({id:'ep-emoji-picker',style:{display:'flex',flexWrap:'wrap',gap:8,justifyContent:'center',marginTop:14}});
+            setTimeout(()=>buildEmojiPicker(),0);
+            return div({class:'card',style:{textAlign:'center',marginBottom:16,padding:'20px'}},
+              h('h3',{style:{marginBottom:14,fontSize:16}},'Choose Your Avatar'),
+              previewEl,
+              p({style:{fontSize:12,color:'var(--muted)',marginBottom:4}},'Tap an emoji to select it'),
+              pickerEl
+            );
+          })(),
 
           // Name
           div({class:'card',style:{marginBottom:16}},
