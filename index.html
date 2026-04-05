@@ -1333,35 +1333,35 @@ function renderEditProfile() {
       S.user.employment = vals.job_interest;
       S.user.profile_emoji = selectedEmoji;
       localStorage.setItem('pw_u',JSON.stringify(S.user));
-      // Save to Supabase - use email as fallback if id is local
-      if(S.token){
-        const patchFilter = S.user.id && !String(S.user.id).startsWith('local_')
-          ? '?id=eq.'+S.user.id
-          : '?email=eq.'+encodeURIComponent(S.user.email);
-        const patchResult = await sbPatch('profiles', patchFilter, {
-          full_name:vals.name.trim(),
-          grade:vals.grade||null,
-          job_interest:vals.job_interest||null,
-          employment:vals.job_interest||null,
-          employment_status:vals.job_interest||null,
-          resume_url:S.user.resume_url||null,
-          profile_emoji:selectedEmoji,
-        }, S.token);
-        console.log('Profile patch result:', patchResult.ok, patchFilter, JSON.stringify(patchResult.data));
-        // Reload profile from Supabase to confirm save worked
-        if(patchResult.ok && S.token){
-          const reload = await sbGet('profiles', patchFilter, S.token);
-          if(reload.ok && reload.data && reload.data[0]){
-            const p = reload.data[0];
-            S.user.name = p.full_name || S.user.name;
-            S.user.full_name = p.full_name || S.user.name;
-            S.user.grade = p.grade;
-            S.user.job_interest = p.job_interest;
-            S.user.profile_emoji = p.profile_emoji || selectedEmoji;
-            localStorage.setItem('pw_u', JSON.stringify(S.user));
-          }
+      // Save to Supabase using upsert by email - works regardless of ID type
+      try {
+        // First get the real profile ID from Supabase by email
+        const findRes = await sbGet('profiles','?email=eq.'+encodeURIComponent(S.user.email), S.token||undefined);
+        if(findRes.ok && findRes.data && findRes.data[0]) {
+          const realId = findRes.data[0].id;
+          // Update with real ID
+          const updateRes = await sbPatch('profiles','?id=eq.'+realId, {
+            full_name:vals.name.trim(),
+            grade:vals.grade||null,
+            job_interest:vals.job_interest||null,
+            employment:vals.job_interest||null,
+            employment_status:vals.job_interest||null,
+            resume_url:S.user.resume_url||null,
+            profile_emoji:selectedEmoji,
+          }, S.token||undefined);
+          console.log('Profile update:', updateRes.ok, updateRes.status);
+          // Update local with confirmed data
+          S.user.id = realId; // Store real ID for future use
+          S.user.name = vals.name.trim();
+          S.user.full_name = vals.name.trim();
+          S.user.grade = vals.grade;
+          S.user.job_interest = vals.job_interest;
+          S.user.profile_emoji = selectedEmoji;
+          localStorage.setItem('pw_u', JSON.stringify(S.user));
+        } else {
+          console.log('Profile not found in Supabase, saving locally only');
         }
-      }
+      } catch(err) { console.error('Save error:', err); }
       saveBtnEl.textContent='Save Changes';saveBtnEl.disabled=false;
       saveMsg='✅ Profile saved!';
       mount(build());
@@ -1746,166 +1746,238 @@ function AdminContent() {
 async function AdminStats(container) {
   if(!container) container=div({style:{padding:'13px'}});
 
-  // Sub-tabs: Survey | Users & Resumes
-  let statsTab='survey';
-  function buildStatsHeader(){
-    const hdr=div({style:{display:'flex',gap:8,marginBottom:14}},
-      ...[['survey','📊 Survey'],['users','👤 Users & Resumes']].map(([t,l])=>
-        btn({class:'btn btn-sm',style:{background:statsTab===t?'var(--primary)':'#fff',color:statsTab===t?'#fff':'var(--muted)',border:statsTab===t?'none':'2px solid var(--border)',marginBottom:0},'click':()=>{statsTab=t;buildContent();}},l)
+  // Survey registry - add future surveys here
+  const SURVEYS = {
+    onboarding: {
+      label: '📋 Onboarding Survey',
+      description: 'Completed at signup — baseline financial knowledge',
+      keys: [
+        {k:'grade', fallback:null, l:'Grade Level'},
+        {k:'employment', fallback:'employment_status', l:'Current Employment'},
+        {k:'has_bank', fallback:'has_bank_account', l:'Has Bank Account'},
+        {k:'ever_budgeted', fallback:null, l:'Ever Made a Budget'},
+        {k:'fin_confidence', fallback:'financial_confidence', l:'Financial Confidence'},
+        {k:'debt_knowledge', fallback:null, l:'Understands Debt / Interest'},
+        {k:'college_plan', fallback:null, l:'Plans After High School'},
+        {k:'loan_awareness', fallback:null, l:'Student Loan Awareness'},
+        {k:'savings_habit', fallback:null, l:'Savings Habit'},
+        {k:'biggest_challenge', fallback:null, l:'Biggest Financial Challenge'},
+        {k:'taught_finances', fallback:null, l:'Has Been Taught Finances'},
+        {k:'investing_knowledge', fallback:null, l:'Investing Knowledge'},
+      ]
+    }
+    // Add future surveys here:
+    // exit: { label: '📤 Exit Survey', keys: [...] }
+  };
+
+  let activeSurvey = 'onboarding';
+  let statsTab = 'survey';
+
+  function buildHeader() {
+    container.innerHTML = '';
+    // Main tabs
+    container.appendChild(div({style:{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}},
+      ...[['survey','📊 Survey Results'],['users','👤 Users & Resumes']].map(([t,l])=>
+        btn({class:'btn btn-sm', style:{
+          background:statsTab===t?'var(--primary)':'#fff',
+          color:statsTab===t?'#fff':'var(--muted)',
+          border:statsTab===t?'none':'2px solid var(--border)',
+          marginBottom:0, fontWeight:700
+        },'click':()=>{statsTab=t;load();}}, l)
       )
-    );
-    return hdr;
+    ));
+    if(statsTab==='survey') {
+      // Survey selector for future multiple surveys
+      const surveyKeys = Object.keys(SURVEYS);
+      if(surveyKeys.length > 1) {
+        container.appendChild(div({style:{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}},
+          ...surveyKeys.map(k=>btn({class:'btn btn-sm', style:{
+            background:activeSurvey===k?'var(--teal)':'#fff',
+            color:activeSurvey===k?'#fff':'var(--muted)',
+            border:activeSurvey===k?'none':'2px solid var(--border)',
+            marginBottom:0,fontSize:12
+          },'click':()=>{activeSurvey=k;load();}}, SURVEYS[k].label))
+        ));
+      }
+    }
+    container.appendChild(div({id:'stats-body'}));
   }
 
-  async function buildContent(){
-    container.innerHTML='';
-    container.appendChild(buildStatsHeader());
-    container.appendChild(div({style:{textAlign:'center',padding:'20px'}},div({class:'spin spin-d'})));
+  async function load() {
+    buildHeader();
+    const body = document.getElementById('stats-body');
+    if(!body) return;
+    body.innerHTML='';
+    body.appendChild(div({style:{textAlign:'center',padding:'30px'}},div({class:'spin spin-d'})));
 
-    const [profRes,badgeRes]=await Promise.all([
-      sbGet('profiles','?order=xp_total.desc',S.token),
-      sbGet('user_badges','?order=earned_at.desc',S.token),
+    const [profRes, badgeRes] = await Promise.all([
+      sbGet('profiles','?order=xp_total.desc',S.token||undefined),
+      sbGet('user_badges','?order=earned_at.desc',S.token||undefined),
     ]);
-    const profiles=profRes.ok&&Array.isArray(profRes.data)?profRes.data:[];
-    const badges=badgeRes.ok&&Array.isArray(badgeRes.data)?badgeRes.data:[];
+    const profiles = profRes.ok && Array.isArray(profRes.data) ? profRes.data : [];
+    const badges = badgeRes.ok && Array.isArray(badgeRes.data) ? badgeRes.data : [];
+    body.innerHTML = '';
 
-    // Remove spinner
-    container.removeChild(container.lastChild);
+    // Stats summary row
+    const answered = profiles.filter(p=>p.grade||p.employment||p.fin_confidence).length;
+    body.appendChild(div({style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:8,marginBottom:16}},
+      ...[
+        {l:'Total Users',v:profiles.length,e:'👥',c:'var(--primary)'},
+        {l:'Survey Filled',v:answered,e:'📋',c:'var(--teal)'},
+        {l:'Avg XP',v:profiles.length>0?Math.round(profiles.reduce((s,p)=>s+(p.xp_total||0),0)/profiles.length):0,e:'⚡',c:'var(--amber)'},
+        {l:'Badges Given',v:badges.length,e:'🏆',c:'#8b5cf6'},
+      ].map(s=>div({class:'card',style:{padding:'10px 8px',textAlign:'center',marginBottom:0}},
+        div({style:{fontSize:18,marginBottom:3}},s.e),
+        div({style:{fontSize:18,fontWeight:700,color:s.c}},s.v),
+        div({style:{fontSize:10,color:'var(--muted)',fontWeight:600,lineHeight:1.3}},s.l)
+      ))
+    ));
 
-    if(statsTab==='survey'){
-      // Stat cards
-      container.appendChild(div({style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:14}},
-        ...[{l:'Users',v:profiles.length,e:'👥'},{l:'Avg XP',v:profiles.length>0?Math.round(profiles.reduce((s,p)=>s+(p.xp_total||0),0)/profiles.length):0,e:'⚡'},{l:'Badges',v:badges.length,e:'🏆'}].map(s=>
-          div({class:'card',style:{padding:'10px',textAlign:'center',marginBottom:0}},
-            div({style:{fontSize:18}},s.e),
-            div({style:{fontSize:20,fontWeight:700,color:'var(--primary)',marginTop:2}},s.v),
-            div({style:{fontSize:10,color:'var(--muted)',marginTop:1}},s.l)
-          )
-        )
+    if(statsTab==='survey') {
+      const survey = SURVEYS[activeSurvey];
+      body.appendChild(div({style:{marginBottom:8}},
+        h('h3',{style:{fontSize:15,marginBottom:2}},survey.label),
+        p({style:{fontSize:12,color:'var(--muted)',marginBottom:12}},survey.description+' · '+answered+' responses')
       ));
 
-      const COLORS=['var(--primary)','var(--teal)','var(--amber)','#8b5cf6','#ec4899','#10b981','#f97316'];
-      const SURVEY_KEYS=[
-        {k:'grade',l:'Grade Level'},
-        {k:'employment',l:'Employment / Job Status', fallback:'employment_status'},
-        {k:'has_bank',l:'Has Bank Account', fallback:'has_bank_account'},
-        {k:'ever_budgeted',l:'Ever Made a Budget'},
-        {k:'fin_confidence',l:'Financial Confidence', fallback:'financial_confidence'},
-        {k:'debt_knowledge',l:'Debt Knowledge'},
-        {k:'college_plan',l:'College Plan'},
-        {k:'loan_awareness',l:'Loan Awareness'},
-        {k:'savings_habit',l:'Savings Habit'},
-        {k:'biggest_challenge',l:'Biggest Challenge'},
-        {k:'taught_finances',l:'Taught Finances'},
-        {k:'investing_knowledge',l:'Investing Knowledge'},
-      ];
-
-      if(!profiles.length){
-        container.appendChild(div({class:'empty'},div({class:'icon'},'📊'),p({style:{color:'var(--muted)',fontSize:14}},'No survey data yet.')));
+      if(!profiles.length || !answered) {
+        body.appendChild(div({class:'empty',style:{padding:'30px 0'}},
+          div({class:'icon',style:{fontSize:40}},'📊'),
+          p({style:{color:'var(--muted)',fontSize:14,fontWeight:500}},'No survey responses yet.'),
+          p({style:{color:'var(--muted)',fontSize:12,marginTop:4}},'Survey answers appear here once users sign up.')
+        ));
         return;
       }
 
-      SURVEY_KEYS.forEach(q=>{
+      const COLORS=['#1A56DB','#0E7490','#F59F00','#8b5cf6','#ec4899','#10b981','#f97316','#ef4444'];
+
+      survey.keys.forEach(q=>{
+        // Collect answers using primary key + fallback
         const counts={};
+        let total=0;
         profiles.forEach(pr=>{
-          const v=pr[q.k]||(q.fallback&&pr[q.fallback])||null;
-          if(v) counts[v]=(counts[v]||0)+1;
+          const v = pr[q.k] || (q.fallback&&pr[q.fallback]) || null;
+          if(v && v!=='null'){counts[v]=(counts[v]||0)+1;total++;}
         });
-        const total=Object.values(counts).reduce((s,n)=>s+n,0)||1;
-        const rows=Object.entries(counts).filter(([k])=>k!=='No answer').sort((a,b)=>b[1]-a[1]);
-        if(!rows.length) return;
-        let open=false;
-        const details=div({style:{display:'none',marginTop:10}},
-          ...rows.map((r,i)=>div({style:{marginBottom:7}},
-            div({style:{display:'flex',justifyContent:'space-between',marginBottom:3}},
-              span({style:{fontSize:12,flex:1,paddingRight:8,lineHeight:1.4,color:'var(--text)'}},r[0]),
-              span({style:{fontSize:12,fontWeight:700,color:COLORS[i%COLORS.length],flexShrink:0}},Math.round((r[1]/total)*100)+'% ('+r[1]+')')
-            ),
-            div({style:{height:6,background:'var(--border)',borderRadius:99}},
-              div({style:{height:6,background:COLORS[i%COLORS.length],borderRadius:99,width:Math.round((r[1]/total)*100)+'%',transition:'width .5s'}})
+
+        if(!total) return; // Skip questions with no data
+
+        const rows = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+        const topAnswer = rows[0];
+        let open = false;
+
+        const detailRows = rows.map((r,i)=>div({style:{marginBottom:8}},
+          div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}},
+            span({style:{fontSize:13,color:'var(--text)',flex:1,paddingRight:8,lineHeight:1.4}},r[0]),
+            span({style:{fontSize:13,fontWeight:700,color:COLORS[i%COLORS.length],flexShrink:0,minWidth:60,textAlign:'right'}},
+              Math.round((r[1]/total)*100)+'%  ('+r[1]+')'
             )
-          ))
-        );
-        const arrow=span({style:{color:'var(--muted)',fontSize:14,flexShrink:0}},'›');
-        const top=rows[0];
-        const card=div({class:'card',style:{marginBottom:8,cursor:'pointer'},'click':()=>{
-          open=!open;details.style.display=open?'block':'none';arrow.textContent=open?'↓':'›';
+          ),
+          div({style:{height:7,background:'var(--border)',borderRadius:99,overflow:'hidden'}},
+            div({style:{height:7,background:COLORS[i%COLORS.length],borderRadius:99,width:Math.round((r[1]/total)*100)+'%'}})
+          )
+        ));
+
+        const details = div({style:{display:'none',marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)'}}, ...detailRows);
+        const arrow = span({style:{color:'var(--muted)',fontSize:15,flexShrink:0,marginLeft:8}}, '›');
+
+        const card = div({class:'card',style:{marginBottom:10,cursor:'pointer'},'click':()=>{
+          open=!open;
+          details.style.display=open?'block':'none';
+          arrow.textContent=open?'↓':'›';
         }},
-          div({style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}},
+          div({style:{display:'flex',alignItems:'center',justifyContent:'space-between'}},
             div({style:{flex:1}},
-              div({style:{fontWeight:700,fontSize:13}},q.l),
-              top?div({style:{fontSize:11,color:'var(--muted)',marginTop:2}},'Top: '+top[0]+' — '+Math.round((top[1]/total)*100)+'%'):null
-            ),arrow
+              div({style:{fontWeight:700,fontSize:14,color:'var(--text)',marginBottom:3}},q.l),
+              div({style:{fontSize:12,color:'var(--muted)'}},
+                total+' responses · Top: ',
+                span({style:{fontWeight:600,color:'var(--primary)'}},topAnswer[0]),
+                ' ('+Math.round((topAnswer[1]/total)*100)+'%)'
+              )
+            ),
+            arrow
           ),
           details
         );
-        container.appendChild(card);
+        body.appendChild(card);
       });
 
     } else {
       // Users & Resumes tab
-      container.appendChild(h('h3',{style:{fontSize:15,marginBottom:12}},'All Users'));
+      body.appendChild(h('h3',{style:{fontSize:15,marginBottom:12}},'All Registered Users'));
+
       if(!profiles.length){
-        container.appendChild(div({class:'empty'},div({class:'icon'},'👤'),p({style:{color:'var(--muted)',fontSize:14}},'No users yet.')));
+        body.appendChild(div({class:'empty'},div({class:'icon'},'👤'),p({style:{color:'var(--muted)',fontSize:14}},'No users yet.')));
         return;
       }
+
       profiles.forEach(pr=>{
-        const userBadges=badges.filter(b=>b.user_id===pr.id);
-        let detailOpen=false;
-        const details=div({style:{display:'none',marginTop:10,borderTop:'1px solid var(--border)',paddingTop:10}},
-          pr.grade?p({style:{fontSize:13,color:'var(--muted)',marginBottom:4}},span({style:{fontWeight:600}},'Grade: '),pr.grade):null,
-          pr.employment||pr.employment_status?p({style:{fontSize:13,color:'var(--muted)',marginBottom:4}},span({style:{fontWeight:600}},'Employment: '),pr.employment||pr.employment_status):null,
-          pr.college_plan?p({style:{fontSize:13,color:'var(--muted)',marginBottom:4}},span({style:{fontWeight:600}},'College Plan: '),pr.college_plan):null,
-          pr.biggest_challenge?p({style:{fontSize:13,color:'var(--muted)',marginBottom:4}},span({style:{fontWeight:600}},'Challenge: '),pr.biggest_challenge):null,
-          pr.fin_confidence?p({style:{fontSize:13,color:'var(--muted)',marginBottom:4}},span({style:{fontWeight:600}},'Confidence: '),pr.fin_confidence):null,
-          userBadges.length?div({style:{marginTop:8}},
-            p({style:{fontSize:12,fontWeight:600,color:'var(--text)',marginBottom:6}},'Badges ('+userBadges.length+'):'),
-            div({style:{display:'flex',gap:6,flexWrap:'wrap'}},
-              ...userBadges.map(b=>div({style:{display:'flex',flexDirection:'column',alignItems:'center',gap:3,width:50}},
-                div({style:{width:36,height:36,borderRadius:10,background:'#FEF9C3',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,border:'1px solid #F59F00'}},(b.emoji||'🏆')),
+        const userBadges = badges.filter(b=>b.user_id===pr.id);
+        let open = false;
+
+        const surveyAnswers = SURVEYS.onboarding.keys
+          .map(q=>({label:q.l, val:pr[q.k]||(q.fallback&&pr[q.fallback])||null}))
+          .filter(a=>a.val&&a.val!=='null');
+
+        const details = div({style:{display:'none',marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)'}},
+          surveyAnswers.length ? div({style:{marginBottom:10}},
+            div({style:{fontWeight:700,fontSize:12,color:'var(--text)',marginBottom:8}},'Survey Answers:'),
+            ...surveyAnswers.map(a=>div({style:{display:'flex',gap:8,marginBottom:5,fontSize:13}},
+              span({style:{color:'var(--muted)',fontWeight:600,flexShrink:0}},a.label+':'),
+              span({style:{color:'var(--text)'}},a.val)
+            ))
+          ) : p({style:{fontSize:12,color:'var(--muted)',marginBottom:8,fontStyle:'italic'}},'No survey answers recorded.'),
+          userBadges.length ? div({style:{marginBottom:10}},
+            div({style:{fontWeight:700,fontSize:12,color:'var(--text)',marginBottom:8}},
+              'Badges ('+userBadges.length+'):'),
+            div({style:{display:'flex',gap:8,flexWrap:'wrap'}},
+              ...userBadges.map(b=>div({style:{display:'flex',flexDirection:'column',alignItems:'center',gap:3,width:52}},
+                div({style:{width:38,height:38,borderRadius:10,background:'#FEF9C3',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,border:'1.5px solid #F59F00'}},b.emoji||'🏆'),
                 span({style:{fontSize:9,textAlign:'center',color:'var(--muted)',lineHeight:1.2}},b.course_title?.slice(0,12)||'Badge')
               ))
             )
-          ):null,
-          pr.resume_url?div({style:{marginTop:10}},
-            h('a',{href:pr.resume_url,target:'_blank',style:{display:'inline-flex',alignItems:'center',gap:7,padding:'9px 14px',background:'var(--primary)',color:'#fff',borderRadius:10,fontSize:13,fontWeight:600,textDecoration:'none'}},'📄 View Resume →')
-          ):p({style:{fontSize:12,color:'var(--muted)',marginTop:6,fontStyle:'italic'}},'No resume uploaded.')
+          ) : null,
+          pr.resume_url
+            ? h('a',{href:pr.resume_url,target:'_blank',style:{display:'inline-flex',alignItems:'center',gap:7,padding:'9px 14px',background:'var(--primary)',color:'#fff',borderRadius:10,fontSize:13,fontWeight:600,textDecoration:'none',marginTop:4}},'📄 View Resume →')
+            : p({style:{fontSize:12,color:'var(--muted)',marginTop:4,fontStyle:'italic'}},'No resume uploaded.')
         );
-        const arrow2=span({style:{color:'var(--muted)',fontSize:14}},'›');
-        const card=div({class:'card',style:{marginBottom:8,cursor:'pointer'},'click':()=>{
-          detailOpen=!detailOpen;details.style.display=detailOpen?'block':'none';arrow2.textContent=detailOpen?'↓':'›';
+
+        const arrow2 = span({style:{color:'var(--muted)',fontSize:15,flexShrink:0}}, '›');
+        const card = div({class:'card',style:{marginBottom:8,cursor:'pointer'},'click':()=>{
+          open=!open;details.style.display=open?'block':'none';arrow2.textContent=open?'↓':'›';
         }},
           div({style:{display:'flex',alignItems:'center',gap:10}},
-            div({style:{width:38,height:38,borderRadius:'50%',background:'linear-gradient(135deg,var(--primary),var(--teal))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,color:'#fff',flexShrink:0,fontWeight:700}},pr.profile_emoji||'😊'),
+            div({style:{width:40,height:40,borderRadius:'50%',background:'linear-gradient(135deg,var(--primary),var(--teal))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}},pr.profile_emoji||'😊'),
             div({style:{flex:1,minWidth:0}},
-              div({style:{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},pr.full_name||pr.email?.split('@')[0]||'User'),
-              div({style:{fontSize:12,color:'var(--muted)',marginTop:2}},pr.email,'  ⚡'+(pr.xp_total||0)+' XP  🏆'+userBadges.length)
+              div({style:{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},(pr.full_name||pr.email?.split('@')[0]||'User')+(pr.is_admin?' 👑':'')),
+              div({style:{fontSize:12,color:'var(--muted)',marginTop:2}},pr.email||'','  ·  ⚡'+(pr.xp_total||0)+' XP  ·  🏆'+userBadges.length+' badges')
             ),
-            pr.is_admin?span({class:'chip chip-a',style:{fontSize:9,flexShrink:0}},'Admin'):null,
             arrow2
           ),
           details
         );
-        container.appendChild(card);
+        body.appendChild(card);
       });
     }
   }
 
-  buildContent();
+  load();
 }
 
 
+
 // ── START ─────────────────────────────────────────────────────────────────────
+const _S = {
+  init: function() {
+    try { this.user = JSON.parse(localStorage.getItem('pw_u')||'null'); } catch(e){}
+    try { this.progress = JSON.parse(localStorage.getItem('pw_p')||'{}'); } catch(e){}
+    this.token = localStorage.getItem('pw_t')||null;
+  }
+};
 S.init();
 (async()=>{
-  if(S.user){
-    // If we have a user but no token, try to get one silently
-    if(!S.token && S.user.email){
-      console.log('No token found for user, will need fresh login for admin writes');
-    }
-    await showMainApp();
-  }
-  else{showSplash();}
+  if(S.user){ await showMainApp(); }
+  else { showSplash(); }
 })();
 </script>
 </body>
