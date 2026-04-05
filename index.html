@@ -214,14 +214,14 @@ async function sbGet(table, query, token) {
   return api('/rest/v1/'+table+(query||''), { headers:{...authH(token),'Accept':'application/json'} });
 }
 async function sbPost(table, body, token) {
-  const headers = {...authH(token), 'Prefer':'resolution=merge-duplicates'};
+  const headers = {...authH(token), 'Prefer':'resolution=merge-duplicates,return=representation'};
   const result = await api('/rest/v1/'+table, { method:'POST', headers, body:JSON.stringify(body) });
-  if(!result.ok) console.error('sbPost failed on '+table+':', result.data);
-  else console.log('sbPost success on '+table);
+  if(!result.ok) console.error('sbPost failed on '+table+':', JSON.stringify(result.data));
   return result;
 }
 async function sbPatch(table, query, body, token) {
-  return api('/rest/v1/'+table+(query||''), { method:'PATCH', headers:authH(token), body:JSON.stringify(body) });
+  const headers = {...authH(token), 'Prefer':'return=representation'};
+  return api('/rest/v1/'+table+(query||''), { method:'PATCH', headers, body:JSON.stringify(body) });
 }
 async function sbDelete(table, query, token) {
   return api('/rest/v1/'+table+(query||''), { method:'DELETE', headers:authH(token) });
@@ -451,10 +451,7 @@ function showSplash() {
       submitB.innerHTML='<div class="spin"></div>';
       submitB.disabled=true;
       const e=_form.email.trim().toLowerCase();
-      // Try local cache first for instant load
-      const cached=localStorage.getItem('pw_u');
-      if(cached){const u=JSON.parse(cached);if(u.email===e){S.saveUser(u);showMainApp();return;}}
-      // Try Supabase
+      // Always try Supabase for fresh data and token
       const res=await sbSignIn(e,_form.password);
       if(res.ok&&res.data.access_token){
         S.saveToken(res.data.access_token);
@@ -1350,7 +1347,20 @@ function renderEditProfile() {
           resume_url:S.user.resume_url||null,
           profile_emoji:selectedEmoji,
         }, S.token);
-        console.log('Profile patch result:', patchResult.ok, patchFilter);
+        console.log('Profile patch result:', patchResult.ok, patchFilter, JSON.stringify(patchResult.data));
+        // Reload profile from Supabase to confirm save worked
+        if(patchResult.ok && S.token){
+          const reload = await sbGet('profiles', patchFilter, S.token);
+          if(reload.ok && reload.data && reload.data[0]){
+            const p = reload.data[0];
+            S.user.name = p.full_name || S.user.name;
+            S.user.full_name = p.full_name || S.user.name;
+            S.user.grade = p.grade;
+            S.user.job_interest = p.job_interest;
+            S.user.profile_emoji = p.profile_emoji || selectedEmoji;
+            localStorage.setItem('pw_u', JSON.stringify(S.user));
+          }
+        }
       }
       saveBtnEl.textContent='Save Changes';saveBtnEl.disabled=false;
       saveMsg='✅ Profile saved!';
@@ -1621,7 +1631,7 @@ function renderAdmin() {
   let content;
   if(_aTab==='courses') content=AdminCourses();
   else if(_aTab==='content') content=AdminContent();
-  else content=AdminStats();
+  else { content=div({style:{padding:'13px',minHeight:'200px'}}); setTimeout(()=>AdminStats(content),0); }
 
   const wrapper=div({style:{display:'flex',flexDirection:'column',height:'100%',background:'var(--off)'}},hdr,div({class:'screen',style:{flex:1}},content));
   if(_aModal) wrapper.appendChild(renderModal());
@@ -1733,8 +1743,8 @@ function AdminContent() {
   return div({style:{padding:'13px'}},crumb,list);
 }
 
-async function AdminStats() {
-  const container=div({style:{padding:'13px'}});
+async function AdminStats(container) {
+  if(!container) container=div({style:{padding:'13px'}});
 
   // Sub-tabs: Survey | Users & Resumes
   let statsTab='survey';
@@ -1777,10 +1787,10 @@ async function AdminStats() {
       const COLORS=['var(--primary)','var(--teal)','var(--amber)','#8b5cf6','#ec4899','#10b981','#f97316'];
       const SURVEY_KEYS=[
         {k:'grade',l:'Grade Level'},
-        {k:'employment',l:'Employment Status'},
-        {k:'has_bank',l:'Has Bank Account'},
+        {k:'employment',l:'Employment / Job Status', fallback:'employment_status'},
+        {k:'has_bank',l:'Has Bank Account', fallback:'has_bank_account'},
         {k:'ever_budgeted',l:'Ever Made a Budget'},
-        {k:'fin_confidence',l:'Financial Confidence'},
+        {k:'fin_confidence',l:'Financial Confidence', fallback:'financial_confidence'},
         {k:'debt_knowledge',l:'Debt Knowledge'},
         {k:'college_plan',l:'College Plan'},
         {k:'loan_awareness',l:'Loan Awareness'},
@@ -1798,10 +1808,10 @@ async function AdminStats() {
       SURVEY_KEYS.forEach(q=>{
         const counts={};
         profiles.forEach(pr=>{
-          const v=pr[q.k]||'No answer';
-          counts[v]=(counts[v]||0)+1;
+          const v=pr[q.k]||(q.fallback&&pr[q.fallback])||null;
+          if(v) counts[v]=(counts[v]||0)+1;
         });
-        const total=profiles.filter(pr=>pr[q.k]).length||1;
+        const total=Object.values(counts).reduce((s,n)=>s+n,0)||1;
         const rows=Object.entries(counts).filter(([k])=>k!=='No answer').sort((a,b)=>b[1]-a[1]);
         if(!rows.length) return;
         let open=false;
@@ -1882,7 +1892,6 @@ async function AdminStats() {
   }
 
   buildContent();
-  return container;
 }
 
 
