@@ -459,9 +459,21 @@ function showSplash() {
       if(res.ok&&res.data.access_token){
         S.saveToken(res.data.access_token);
         const u={id:res.data.user.id,email:e,name:res.data.user.user_metadata?.name||e.split('@')[0],xp_total:0,isAdmin:e===ADMIN};
-        // Try get profile
+        // Load full profile from Supabase
         const pr=await sbGet('profiles','?id=eq.'+res.data.user.id,res.data.access_token);
-        if(pr.ok&&pr.data&&pr.data[0]){const prof=pr.data[0];u.name=prof.full_name||u.name;u.xp_total=prof.xp_total||0;u.isAdmin=prof.is_admin||e===ADMIN;}
+        if(pr.ok&&pr.data&&pr.data[0]){
+          const prof=pr.data[0];
+          u.name=prof.full_name||u.name;
+          u.full_name=prof.full_name||u.name;
+          u.xp_total=prof.xp_total||0;
+          u.isAdmin=prof.is_admin||e===ADMIN;
+          u.profile_emoji=prof.profile_emoji||'😊';
+          u.grade=prof.grade||null;
+          u.job_interest=prof.job_interest||null;
+          u.employment=prof.employment||null;
+          u.resume_url=prof.resume_url||null;
+          u.avatar_url=prof.avatar_url||null;
+        }
         S.saveUser(u);showMainApp();
       } else {
         errEl.textContent='Invalid email or password.';errEl.style.display='block';
@@ -1007,9 +1019,8 @@ function ProfileTab(allLessons,doneLessons,totalXP,level) {
   // Avatar section
   const profileEmoji = S.user.profile_emoji || '😊';
   const avatarEl = div({style:{width:64,height:64,borderRadius:'50%',background:'linear-gradient(135deg,var(--primary),var(--teal))',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,cursor:'pointer',boxShadow:'0 4px 12px rgba(0,0,0,.2)',border:'3px solid rgba(255,255,255,.4)',margin:'0 auto 2px'},'click':()=>{_editProfile=true;renderApp();}},profileEmoji);
-  const avatarContainer = div({style:{position:'relative',display:'inline-block',margin:'0 auto 12px'}},
-    avatarEl,
-    div({style:{position:'absolute',bottom:0,right:0,width:22,height:22,borderRadius:'50%',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,cursor:'pointer',boxShadow:'0 2px 6px rgba(0,0,0,.3)',border:'2px solid #fff'},'click':()=>{_editProfile=true;renderApp();}},'✏️')
+  const avatarContainer = div({style:{display:'inline-block',margin:'0 auto 12px',cursor:'pointer'},'click':()=>{_editProfile=true;renderApp();}},
+    avatarEl
   );
 
   return div({class:'screen'},
@@ -1332,7 +1343,7 @@ function renderEditProfile() {
       }
       saveBtnEl.textContent='Save Changes';saveBtnEl.disabled=false;
       saveMsg='✅ Profile saved!';
-      mount(buildScreen());
+      mount(build());
       setTimeout(()=>{_editProfile=false;renderApp();},900);
     }},'Save Changes');
 
@@ -1423,7 +1434,7 @@ function renderEditProfile() {
     );
   }
 
-  function buildScreen() { return build(); }
+  
   mount(build());
 }
 
