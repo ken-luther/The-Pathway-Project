@@ -459,6 +459,7 @@ function showSplash() {
         // Load full profile from Supabase — always by email for consistency
         const pr=await sbGet('profiles','?email=eq.'+encodeURIComponent(e),res.data.access_token);
         const prof = pr.ok&&Array.isArray(pr.data)&&pr.data[0] ? pr.data[0] : null;
+        console.log('LOGIN profile found:', !!prof, prof ? 'grade='+prof.grade+' job='+prof.job_interest+' emoji='+prof.profile_emoji : 'NONE');
         if(prof){
           u.id=prof.id;
           u.name=prof.full_name||u.name;
@@ -1367,24 +1368,25 @@ function renderEditProfile() {
           is_admin: S.user.email===ADMIN,
           onboarding_complete: true,
         };
-        // Use upsert on email column — creates or updates regardless of ID
-        const headers = {...H, 'Prefer':'resolution=merge-duplicates,return=representation'};
-        const upsertRes = await fetch(SB_URL+'/rest/v1/profiles?on_conflict=email', {
-          method:'POST', headers, body: JSON.stringify(profileData)
-        });
-        const upsertData = await upsertRes.json();
-        console.log('Upsert result:', upsertRes.ok, upsertRes.status);
-        console.log('Upsert data:', JSON.stringify(upsertData).slice(0,300));
-        if(!upsertRes.ok) console.error('UPSERT FAILED:', JSON.stringify(upsertData));
-        if(upsertRes.ok && upsertData && upsertData[0]) {
-          // Update local with what Supabase confirmed
-          S.user.id = upsertData[0].id || S.user.id;
+        // PATCH by email - most reliable approach
+        const patchRes = await fetch(
+          SB_URL+'/rest/v1/profiles?email=eq.'+encodeURIComponent(S.user.email),
+          { method:'PATCH', headers:{...H,'Prefer':'return=representation'}, body:JSON.stringify(profileData) }
+        );
+        const patchData = await patchRes.json();
+        console.log('PATCH result:', patchRes.ok, patchRes.status);
+        console.log('PATCH data:', JSON.stringify(patchData).slice(0,300));
+        if(patchRes.ok && Array.isArray(patchData) && patchData[0]) {
+          S.user.id = patchData[0].id || S.user.id;
           S.user.profile_emoji = selectedEmoji;
           S.user.name = vals.name.trim();
           S.user.full_name = vals.name.trim();
-          S.user.grade = vals.grade;
-          S.user.job_interest = vals.job_interest;
+          S.user.grade = patchData[0].grade;
+          S.user.job_interest = patchData[0].job_interest;
           localStorage.setItem('pw_u', JSON.stringify(S.user));
+          console.log('Saved grade:', patchData[0].grade, 'job:', patchData[0].job_interest);
+        } else {
+          console.error('PATCH FAILED:', JSON.stringify(patchData));
         }
       } catch(err) { console.error('Save error:', err); }
       saveBtnEl.textContent='Save Changes';saveBtnEl.disabled=false;
