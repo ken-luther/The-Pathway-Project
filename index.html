@@ -2043,32 +2043,20 @@ this.token = localStorage.getItem(‘pw_t’)||null;
 };
 S.init();
 
-function startApp() {
-try {
-if(S.user && S.user.email) {
+// Start the app - wrapped in DOMContentLoaded to be safe
+function _start() {
+if (S.user && S.user.email) {
+// Returning user - go straight to login screen with email pre-filled
 _step = ‘login’;
-_form = {email: S.user.email, password: ‘’, name: S.user.name || ‘’};
-} else {
-_step = ‘welcome’;
+_form.email = S.user.email;
 }
 showSplash();
-} catch(e) {
-console.error(‘Startup error:’, e);
-localStorage.clear();
-S.user = null;
-S.token = null;
-_step = ‘welcome’;
-_form = {email:’’,password:’’,name:’’};
-_survey = {};
-_sPage = 0;
-showSplash();
-}
 }
 
 if (document.readyState === ‘loading’) {
-document.addEventListener(‘DOMContentLoaded’, startApp);
+document.addEventListener(‘DOMContentLoaded’, _start);
 } else {
-startApp();
+_start();
 }
 </script>
 
