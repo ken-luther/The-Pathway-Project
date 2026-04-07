@@ -678,8 +678,6 @@ let content;
 if(S.tab===‘home’) content=HomeTab(allLessons,doneLessons,totalXP,level,lxp);
 else if(S.tab===‘learn’) content=LearnTab();
 else if(S.tab===‘board’) content=LeaderboardTab();
-// Reset leaderboard state when switching away
-if(S.tab!==‘board’){ _lbSelProfile=null; _lbSelClass=null; }
 else content=ProfileTab(allLessons,doneLessons,totalXP,level);
 
 const nav=div({class:‘bnav’},
@@ -770,6 +768,9 @@ let _lbSelClass = null;
 let _classes = null; // null = not loaded
 
 function LeaderboardTab() {
+_lbSelProfile = null;
+_lbSelClass = null;
+_lbView = ‘global’;
 const container = div({class:‘screen’});
 
 async function load() {
@@ -2032,7 +2033,39 @@ this.token = localStorage.getItem(‘pw_t’)||null;
 };
 S.init();
 (async()=>{
-if(S.user){ await showMainApp(); }
+if(S.user){
+// Always refresh profile from Supabase on app open
+if(S.user.email && S.token) {
+try {
+const pr = await fetch(SB_URL+’/rest/v1/profiles?email=eq.’+encodeURIComponent(S.user.email),
+{headers:{…H,‘Authorization’:‘Bearer ‘+S.token}});
+if(pr.ok) {
+const data = await pr.json();
+if(Array.isArray(data) && data[0]) {
+const prof = data[0];
+S.user.id = prof.id || S.user.id;
+S.user.name = prof.full_name || S.user.name;
+S.user.full_name = prof.full_name || S.user.name;
+S.user.xp_total = prof.xp_total || 0;
+S.user.profile_emoji = prof.profile_emoji || S.user.profile_emoji || ‘😊’;
+S.user.grade = prof.grade || null;
+S.user.job_interest = prof.job_interest || prof.employment || null;
+S.user.resume_url = prof.resume_url || null;
+S.user.isAdmin = prof.is_admin || S.user.email === ADMIN;
+localStorage.setItem(‘pw_u’, JSON.stringify(S.user));
+}
+}
+// Also refresh badges
+const br = await fetch(SB_URL+’/rest/v1/user_badges?user_id=eq.’+(S.user.id)+’&order=earned_at.desc’,
+{headers:{…H,‘Authorization’:’Bearer ’+S.token}});
+if(br.ok) {
+const badges = await br.json();
+if(Array.isArray(badges)) localStorage.setItem(‘pw_badges’, JSON.stringify(badges));
+}
+} catch(e) { console.log(‘Profile refresh failed:’, e.message); }
+}
+await showMainApp();
+}
 else { showSplash(); }
 })();
 </script>
