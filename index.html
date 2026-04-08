@@ -1555,6 +1555,8 @@ function renderModal(){
     var i=h('input',{type:type, placeholder:placeholder||'', value:_adminFormVals[key]||'',
       style:{padding:'14px 16px',border:'2px solid var(--border)',borderRadius:10,fontSize:15,
         fontFamily:'inherit',width:'100%',outline:'none',marginBottom:14}});
+    // Write back initial value
+    if(i.value) _adminFormVals[key] = type==='number' ? Number(i.value) : i.value;
     i.addEventListener('input', function(){_adminFormVals[key] = type==='number' ? Number(i.value) : i.value;});
     i.addEventListener('focus', function(){i.style.borderColor='var(--primary)';});
     i.addEventListener('blur',  function(){i.style.borderColor='var(--border)';});
@@ -1572,6 +1574,8 @@ function renderModal(){
       if(_adminFormVals[key]===v) o.selected=true;
       s.appendChild(o);
     }
+    // Write back initial value immediately after options appended
+    _adminFormVals[key] = s.value;
     s.addEventListener('change', function(){_adminFormVals[key]=s.value;});
     var lbl2=h('label',{style:{display:'block',fontSize:13,fontWeight:700,marginBottom:7,color:'var(--text)'}},lbl);
     var wrap=div(null); wrap.appendChild(lbl2); wrap.appendChild(s);
@@ -1634,8 +1638,14 @@ function renderModal(){
     var b=btn({class:'btn btn-p'}, label);
     b.addEventListener('click', function(){
       b.textContent='Saving...'; b.disabled=true;
-      Promise.resolve().then(fn).catch(function(e){
-        console.error('Save error:',e);
+      console.log('saveBtn clicked:', label, '_adminFormVals:', JSON.stringify(_adminFormVals));
+      console.log('S.token:', S.token ? S.token.slice(0,20) : 'NULL');
+      console.log('_aSelM:', _aSelM ? _aSelM.id : 'NULL');
+      console.log('_aSelC:', _aSelC ? _aSelC.id : 'NULL');
+      Promise.resolve().then(fn).then(function(){
+        console.log('saveBtn success:', label);
+      }).catch(function(e){
+        console.error('Save error for '+label+':', e.message||e);
         b.textContent=label; b.disabled=false;
       });
     });
