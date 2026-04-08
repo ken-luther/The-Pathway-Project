@@ -1815,6 +1815,15 @@ function renderModal(){
 }
 
 
+async function reloadCourses() {
+  try {
+    const courses = await loadCourses(S.token, !S.user.isAdmin);
+    S.courses = courses;
+  } catch(e) {
+    console.error('reloadCourses error:', e);
+  }
+}
+
 function renderAdmin() {
   const tabs=[['courses','📚 Courses'],['content','📝 Content'],['stats','📊 Stats']];
 
@@ -1942,7 +1951,42 @@ function AdminContent() {
           rowLeft.appendChild(div({style:{width:26,height:26,borderRadius:'50%',background:'var(--sky)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:11,color:'var(--teal)',flexShrink:0}},'M'));
           rowLeft.appendChild(div({style:{flex:1}},div({style:{fontWeight:500,fontSize:12}},mod.title),div({style:{fontSize:10,color:'var(--muted)'}},(mod.lessons||[]).length+' lessons')));
           var rowBtns = div({style:{display:'flex',gap:5,flexShrink:0}});
+          // Move up
+          rowBtns.appendChild(btn({class:'btn btn-sm',style:{background:'var(--off)',color:'var(--muted)',border:'1px solid var(--border)',marginBottom:0,padding:'5px 8px',fontSize:11},'click':async function(){
+            var idx2=mods.indexOf(mod);
+            if(idx2===0)return;
+            var other=mods[idx2-1];
+            await Promise.all([
+              sbPatch('modules','?id=eq.'+mod.id,{order_index:other.order_index||idx2},S.token),
+              sbPatch('modules','?id=eq.'+other.id,{order_index:mod.order_index||(idx2+1)},S.token)
+            ]);
+            await reloadCourses();
+            for(var ci=0;ci<S.courses.length;ci++){if(S.courses[ci].id===_aSelC.id){_aSelC=S.courses[ci];break;}}
+            renderAdmin();
+          }},'↑'));
+          // Move down
+          rowBtns.appendChild(btn({class:'btn btn-sm',style:{background:'var(--off)',color:'var(--muted)',border:'1px solid var(--border)',marginBottom:0,padding:'5px 8px',fontSize:11},'click':async function(){
+            var idx2=mods.indexOf(mod);
+            if(idx2===mods.length-1)return;
+            var other=mods[idx2+1];
+            await Promise.all([
+              sbPatch('modules','?id=eq.'+mod.id,{order_index:other.order_index||(idx2+2)},S.token),
+              sbPatch('modules','?id=eq.'+other.id,{order_index:mod.order_index||(idx2+1)},S.token)
+            ]);
+            await reloadCourses();
+            for(var ci=0;ci<S.courses.length;ci++){if(S.courses[ci].id===_aSelC.id){_aSelC=S.courses[ci];break;}}
+            renderAdmin();
+          }},'↓'));
+          // Edit
           rowBtns.appendChild(btn({class:'btn btn-sm',style:{background:'var(--sky)',color:'var(--teal)',border:'none',marginBottom:0,padding:'6px 10px',fontSize:12},'click':function(){openModal('editModule',{id:mod.id,title:mod.title});}},'✏️'));
+          // Delete
+          rowBtns.appendChild(btn({class:'btn btn-sm',style:{background:'#fee2e2',color:'var(--danger)',border:'none',marginBottom:0,padding:'6px 10px',fontSize:12},'click':async function(){
+            if(!confirm('Delete module "'+mod.title+'" and all its lessons?'))return;
+            await sbDelete('modules','?id=eq.'+mod.id,S.token);
+            await reloadCourses();
+            for(var ci=0;ci<S.courses.length;ci++){if(S.courses[ci].id===_aSelC.id){_aSelC=S.courses[ci];break;}}
+            renderAdmin();
+          }},'✕'));
           rowBtns.appendChild(span({style:{color:'var(--muted)',fontSize:18,cursor:'pointer',padding:'0 4px',lineHeight:'26px'},'click':function(){_aSelM=mod;renderAdmin();}},'›'));
           row.appendChild(rowLeft);
           row.appendChild(rowBtns);
@@ -1968,6 +2012,33 @@ function AdminContent() {
           rowLeft.appendChild(span({style:{fontSize:18}},icons[lesson.type]||'📄'));
           rowLeft.appendChild(div({style:{flex:1}},div({style:{fontWeight:500,fontSize:12}},lesson.title),div({style:{fontSize:10,color:'var(--muted)',textTransform:'capitalize'}},lesson.type+' · '+(lesson.xp_reward||lesson.xp||10)+' XP'+(lesson.type==='quiz'?' · '+(lesson.questions||[]).length+' Qs':''))));
           var rowBtns2 = div({style:{display:'flex',gap:5,flexShrink:0}});
+          // Move up lesson
+          rowBtns2.appendChild(btn({class:'btn btn-sm',style:{background:'var(--off)',color:'var(--muted)',border:'1px solid var(--border)',marginBottom:0,padding:'5px 8px',fontSize:11},'click':async function(){
+            var idx2=lessons.indexOf(lesson);
+            if(idx2===0)return;
+            var other=lessons[idx2-1];
+            await Promise.all([
+              sbPatch('lessons','?id=eq.'+lesson.id,{order_index:other.order_index||idx2},S.token),
+              sbPatch('lessons','?id=eq.'+other.id,{order_index:lesson.order_index||(idx2+1)},S.token)
+            ]);
+            await reloadCourses();
+            for(var ci=0;ci<S.courses.length;ci++){for(var mi=0;mi<S.courses[ci].modules.length;mi++){if(S.courses[ci].modules[mi].id===_aSelM.id){_aSelM=S.courses[ci].modules[mi];break;}}}
+            renderAdmin();
+          }},'↑'));
+          // Move down lesson
+          rowBtns2.appendChild(btn({class:'btn btn-sm',style:{background:'var(--off)',color:'var(--muted)',border:'1px solid var(--border)',marginBottom:0,padding:'5px 8px',fontSize:11},'click':async function(){
+            var idx2=lessons.indexOf(lesson);
+            if(idx2===lessons.length-1)return;
+            var other=lessons[idx2+1];
+            await Promise.all([
+              sbPatch('lessons','?id=eq.'+lesson.id,{order_index:other.order_index||(idx2+2)},S.token),
+              sbPatch('lessons','?id=eq.'+other.id,{order_index:lesson.order_index||(idx2+1)},S.token)
+            ]);
+            await reloadCourses();
+            for(var ci=0;ci<S.courses.length;ci++){for(var mi=0;mi<S.courses[ci].modules.length;mi++){if(S.courses[ci].modules[mi].id===_aSelM.id){_aSelM=S.courses[ci].modules[mi];break;}}}
+            renderAdmin();
+          }},'↓'));
+          // Edit lesson
           rowBtns2.appendChild(btn({class:'btn btn-sm',style:{background:'var(--primary-light)',color:'var(--primary)',border:'none',marginBottom:0,padding:'6px 10px',fontSize:12},'click':function(){
             openModal('editLesson',{id:lesson.id,title:lesson.title,type:lesson.lesson_type||lesson.type,xp:String(lesson.xp_reward||lesson.xp||10),content:lesson.content||''});
           }},'✏️'));
