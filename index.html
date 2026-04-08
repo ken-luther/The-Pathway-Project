@@ -1560,6 +1560,8 @@ function renderModal(){
     m.appendChild(btn({class:'btn btn-p','click':async()=>{
       if(!_adminFormVals.title){alert('Title is required');return;}
       const row={id:crypto.randomUUID(),title:_adminFormVals.title,description:_adminFormVals.description||'',emoji:_adminFormVals.emoji||'📚',color:_adminFormVals.color||'#1E4976',published:false,order_index:S.courses.length+1};
+      const saveBtnEl3=m.querySelector('.btn-p');
+      if(saveBtnEl3){saveBtnEl3.textContent='Saving...';saveBtnEl3.disabled=true;}
       await sbPost('courses',row,S.token);
       await reloadCourses();closeModal();
     }},'Create Course'));
@@ -1570,6 +1572,8 @@ function renderModal(){
     m.appendChild(btn({class:'btn btn-p','click':async()=>{
       if(!_adminFormVals.title||!_aSelC){alert('Title required');return;}
       const row={id:crypto.randomUUID(),course_id:_aSelC.id,title:_adminFormVals.title,order_index:(_aSelC.modules||[]).length+1};
+      const saveBtnEl=m.querySelector('.btn-p');
+      if(saveBtnEl){saveBtnEl.textContent='Saving...';saveBtnEl.disabled=true;}
       await sbPost('modules',row,S.token);
       await reloadCourses();
       _aSelC=S.courses.find(c=>c.id===_aSelC.id)||_aSelC;
@@ -1607,6 +1611,8 @@ function renderModal(){
     m.appendChild(btn({class:'btn btn-p','click':async()=>{
       if(!_adminFormVals.title||!_aSelM){alert('Title required');return;}
       const row={id:crypto.randomUUID(),module_id:_aSelM.id,title:_adminFormVals.title,lesson_type:_adminFormVals.type||'text',content:_adminFormVals.content||'',xp_reward:Number(_adminFormVals.xp)||10,order_index:(_aSelM.lessons||[]).length+1};
+      const saveBtnEl2=m.querySelector('.btn-p');
+      if(saveBtnEl2){saveBtnEl2.textContent='Saving...';saveBtnEl2.disabled=true;}
       await sbPost('lessons',row,S.token);
       await reloadCourses();
       _aSelC=S.courses.find(c=>c.id===_aSelC.id)||_aSelC;
@@ -1672,6 +1678,11 @@ function renderModal(){
   overlay.appendChild(m);
   m.addEventListener('click',e=>e.stopPropagation());
   return overlay;
+}
+
+async function reloadCourses() {
+  const courses = await loadCourses(S.token, !S.user.isAdmin);
+  S.courses = courses;
 }
 
 function renderAdmin() {
