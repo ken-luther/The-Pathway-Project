@@ -1240,13 +1240,27 @@ function renderLesson() {
 
   // Text lesson
   if(l.type==='text'){
-    const lines=(l.content||'No content yet.').split('\\n').map(line=>p({style:{marginBottom:8,fontSize:15,lineHeight:1.8,color:'var(--text)'}},line||'\u00A0'));
-    mount(div({style:{display:'flex',flexDirection:'column',height:'100%'}},div({class:'screen'},
-      header,
-      div({style:{padding:'18px'}},...lines,
-        !S.isDone(l.id)?btn({class:'btn btn-p',style:{marginTop:18},'click':()=>{S.complete(l.id,l.xp);back();}},'Mark Complete · +'+l.xp+' XP'):div({class:'sb',style:{textAlign:'center',marginTop:14}},'✅ Lesson completed!')
-      )
-    )));
+    var bodyDiv = div({style:{padding:'18px'}});
+    var rawContent = l.content || 'No content yet.';
+    // Parse content - split by newlines, handle [IMAGE:url] markers
+    var parts = rawContent.split('\n');
+    parts.forEach(function(line) {
+      var imgMatch = line.match(/^\[IMAGE:(.+)\]$/);
+      if(imgMatch) {
+        var imgUrl = imgMatch[1].trim();
+        bodyDiv.appendChild(div({style:{margin:'12px 0',borderRadius:12,overflow:'hidden'}},
+          h('img',{src:imgUrl,style:{width:'100%',display:'block',borderRadius:12,maxHeight:'280px',objectFit:'cover'}})
+        ));
+      } else {
+        bodyDiv.appendChild(p({style:{marginBottom:8,fontSize:15,lineHeight:1.8,color:'var(--text)'}},line||'\u00A0'));
+      }
+    });
+    if(!S.isDone(l.id)) {
+      bodyDiv.appendChild(btn({class:'btn btn-p',style:{marginTop:18},'click':function(){S.complete(l.id,l.xp);back();}},'Mark Complete · +'+l.xp+' XP'));
+    } else {
+      bodyDiv.appendChild(div({class:'sb',style:{textAlign:'center',marginTop:14}},'✅ Lesson completed!'));
+    }
+    mount(div({style:{display:'flex',flexDirection:'column',height:'100%'}},div({class:'screen'},header,bodyDiv)));
     return;
   }
 
@@ -1577,6 +1591,45 @@ function renderModal(){
     return wrap;
   }
 
+  function buildImageUploadHelper(contentKey) {
+    var statusEl = div({style:{fontSize:12,color:'var(--muted)',marginBottom:10,minHeight:16}});
+    var fileInput = h('input',{type:'file',accept:'image/*',style:{display:'none'}});
+    fileInput.addEventListener('change', function() {
+      var file = fileInput.files[0];
+      if(!file) return;
+      if(file.size > 5*1024*1024) { statusEl.textContent='Image must be under 5MB'; statusEl.style.color='var(--danger)'; return; }
+      statusEl.textContent='Uploading image...'; statusEl.style.color='var(--muted)';
+      var path = 'lesson-images/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g,'_');
+      var headers = authH(S.token);
+      headers['Content-Type'] = file.type;
+      headers['x-upsert'] = 'true';
+      fetch(SB_URL+'/storage/v1/object/avatars/'+path, {method:'POST', headers:headers, body:file})
+        .then(function(r) {
+          if(r.ok) {
+            var url = SB_URL+'/storage/v1/object/public/avatars/'+path;
+            var marker = '[IMAGE:'+url+']';
+            // Append marker to content on a new line
+            var current = _adminFormVals[contentKey] || '';
+            _adminFormVals[contentKey] = current + (current ? '\n' : '') + marker;
+            // Update the textarea
+            var ta = m.querySelector('textarea');
+            if(ta) ta.value = _adminFormVals[contentKey];
+            statusEl.textContent = '✅ Image added to content!'; statusEl.style.color='var(--success)';
+          } else {
+            statusEl.textContent = 'Upload failed. Check storage bucket.'; statusEl.style.color='var(--danger)';
+          }
+        })
+        .catch(function() { statusEl.textContent='Upload error.'; statusEl.style.color='var(--danger)'; });
+    });
+    var uploadBtn = btn({class:'btn btn-o btn-sm',style:{marginBottom:10},'click':function(){fileInput.click();}});
+    uploadBtn.textContent = '📷 Upload Image';
+    var wrap = div(null);
+    wrap.appendChild(uploadBtn);
+    wrap.appendChild(fileInput);
+    wrap.appendChild(statusEl);
+    return wrap;
+  }
+
   function saveBtn(label, fn) {
     var b=btn({class:'btn btn-p'}, label);
     b.addEventListener('click', function(){
@@ -1656,7 +1709,10 @@ function renderModal(){
     function updateCA(){
       caWrap.innerHTML='';
       var t=_adminFormVals.type||'text';
-      if(t==='text') caWrap.appendChild(fta('Content','content','Lesson text...'));
+      if(t==='text') {
+        caWrap.appendChild(fta('Content','content','Lesson text...\n\nTip: Use [IMAGE:url] on its own line to embed an image.'));
+        caWrap.appendChild(buildImageUploadHelper('content'));
+      }
       else if(t==='video') caWrap.appendChild(fi('YouTube Embed URL','content','https://www.youtube.com/embed/VIDEO_ID'));
       else if(t==='link') caWrap.appendChild(fi('Resource URL','content','https://...'));
     }
@@ -1690,7 +1746,10 @@ function renderModal(){
     function updateCA2(){
       ca2Wrap.innerHTML='';
       var t2=_adminFormVals.type||'text';
-      if(t2==='text') ca2Wrap.appendChild(fta('Content','content','Lesson text...'));
+      if(t2==='text') {
+        ca2Wrap.appendChild(fta('Content','content','Lesson text...\n\nTip: Use [IMAGE:url] on its own line to embed an image.'));
+        ca2Wrap.appendChild(buildImageUploadHelper('content'));
+      }
       else if(t2==='video') ca2Wrap.appendChild(fi('YouTube Embed URL','content','https://www.youtube.com/embed/VIDEO_ID'));
       else if(t2==='link') ca2Wrap.appendChild(fi('Resource URL','content','https://...'));
     }
