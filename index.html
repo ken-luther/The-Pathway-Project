@@ -1524,7 +1524,12 @@ function renderEditProfile() {
 let _aTab='courses', _aSelC=null, _aSelM=null, _aSelL=null, _aModal=null;
 let _adminFormVals={};
 
-function openModal(type, data){ _aModal=type; _adminFormVals={...(data||{})}; renderAdmin(); }
+function openModal(type, data){
+  _aModal=type;
+  _adminFormVals={};
+  if(data){var keys=Object.keys(data);for(var i=0;i<keys.length;i++){_adminFormVals[keys[i]]=data[keys[i]];}}
+  renderAdmin();
+}
 function closeModal(){ _aModal=null; _adminFormVals={}; renderAdmin(); }
 
 function renderModal(){
@@ -1739,34 +1744,52 @@ function renderAdmin() {
 }
 
 function AdminCourses() {
-  const allC=S.courses;
-  return div({style:{padding:'13px'}},
-    div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:11}},
-      h('h3',{style:{fontSize:14}},'All Courses ('+allC.length+')'),
-      btn({class:'btn btn-p btn-sm',style:{marginBottom:0},'click':()=>openModal('addCourse',{})},'+ New Course')
-    ),
-    allC.length?div(null,...allC.map(c=>div({class:'card',style:{marginBottom:9,padding:'12px 14px'}},
-      div({style:{display:'flex',alignItems:'center',gap:9,marginBottom:9}},
-        span({style:{fontSize:24}},c.emoji||'📚'),
-        div({style:{flex:1}},div({style:{fontWeight:600,fontSize:13}},c.title),div({style:{fontSize:11,color:'var(--muted)'}},(c.modules||[]).length+' modules')),
-        span({class:'chip '+(c.published?'chip-g':'chip-a')},c.published?'Live':'Draft')
-      ),
-      c.badge_name?div({style:{fontSize:11,color:'var(--teal)',marginBottom:8,fontWeight:600}},'🏆 Badge: '+c.badge_name):null,
-      div({style:{display:'flex',gap:6,flexWrap:'wrap'}},
-        btn({class:'btn btn-o btn-sm',style:{marginBottom:0},'click':()=>openModal('editCourse',{id:c.id,title:c.title,description:c.description||'',emoji:c.emoji||'📚',color:c.color||'#1E4976',badge_name:c.badge_name||''})},'✏️ Edit'),
-        btn({class:'btn btn-o btn-sm',style:{marginBottom:0},'click':()=>{_aSelC=c;_aTab='content';renderAdmin();}},'Edit Content'),
-        btn({class:'btn btn-sm',style:{background:c.published?'#fee2e2':'#dcfce7',color:c.published?'var(--danger)':'var(--success)',border:'none',marginBottom:0},'click':async function(){
-          await sbPatch('courses','?id=eq.'+c.id,{published:!c.published},S.token);
-          await reloadCourses();renderAdmin();
-        }},c.published?'Unpublish':'Publish'),
-        btn({class:'btn btn-sm',style:{background:'#fee2e2',color:'var(--danger)',border:'none',marginBottom:0},'click':async()=>{
-          if(!confirm('Delete "'+c.title+'"?')) return;
-          await sbDelete('courses','?id=eq.'+c.id,S.token);
-          await reloadCourses();renderAdmin();
-        }},'Delete')
-      )
-    ))):div({class:'empty'},div({class:'icon'},'📚'),p({style:{color:'var(--muted)',fontSize:14}},'No courses yet. Tap + to create one.'))
-  );
+  var allC = S.courses;
+  var wrap = div({style:{padding:'13px'}});
+  var topRow = div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:11}});
+  topRow.appendChild(h('h3',{style:{fontSize:14}},'All Courses ('+allC.length+')'));
+  topRow.appendChild(btn({class:'btn btn-p btn-sm',style:{marginBottom:0},'click':function(){openModal('addCourse',{});}},'+ New Course'));
+  wrap.appendChild(topRow);
+  if(!allC.length) {
+    wrap.appendChild(div({class:'empty'},div({class:'icon'},'📚'),p({style:{color:'var(--muted)',fontSize:14}},'No courses yet. Tap + to create one.')));
+    return wrap;
+  }
+  allC.forEach(function(c) {
+    var card = div({class:'card',style:{marginBottom:9,padding:'12px 14px'}});
+    // Header row
+    var hdrRow = div({style:{display:'flex',alignItems:'center',gap:9,marginBottom:9}});
+    hdrRow.appendChild(span({style:{fontSize:24}},c.emoji||'📚'));
+    var info = div({style:{flex:1}});
+    info.appendChild(div({style:{fontWeight:600,fontSize:13}},c.title));
+    info.appendChild(div({style:{fontSize:11,color:'var(--muted)'}},(c.modules||[]).length+' modules'));
+    hdrRow.appendChild(info);
+    hdrRow.appendChild(span({class:'chip '+(c.published?'chip-g':'chip-a')},c.published?'Live':'Draft'));
+    card.appendChild(hdrRow);
+    // Badge name
+    if(c.badge_name) {
+      card.appendChild(div({style:{fontSize:11,color:'var(--teal)',marginBottom:8,fontWeight:600}},'🏆 Badge: '+c.badge_name));
+    }
+    // Buttons
+    var btnsRow = div({style:{display:'flex',gap:6,flexWrap:'wrap'}});
+    (function(course){
+      btnsRow.appendChild(btn({class:'btn btn-o btn-sm',style:{marginBottom:0},'click':function(){
+        openModal('editCourse',{id:course.id,title:course.title,description:course.description||'',emoji:course.emoji||'📚',color:course.color||'#1E4976',badge_name:course.badge_name||''});
+      }},'✏️ Edit'));
+      btnsRow.appendChild(btn({class:'btn btn-o btn-sm',style:{marginBottom:0},'click':function(){_aSelC=course;_aTab='content';renderAdmin();}},'Edit Content'));
+      btnsRow.appendChild(btn({class:'btn btn-sm',style:{background:course.published?'#fee2e2':'#dcfce7',color:course.published?'var(--danger)':'var(--success)',border:'none',marginBottom:0},'click':async function(){
+        await sbPatch('courses','?id=eq.'+course.id,{published:!course.published},S.token);
+        await reloadCourses();renderAdmin();
+      }},course.published?'Unpublish':'Publish'));
+      btnsRow.appendChild(btn({class:'btn btn-sm',style:{background:'#fee2e2',color:'var(--danger)',border:'none',marginBottom:0},'click':async function(){
+        if(!confirm('Delete "'+course.title+'"?')) return;
+        await sbDelete('courses','?id=eq.'+course.id,S.token);
+        await reloadCourses();renderAdmin();
+      }},'Delete'));
+    })(c);
+    card.appendChild(btnsRow);
+    wrap.appendChild(card);
+  });
+  return wrap;
 }
 
 function AdminContent() {
