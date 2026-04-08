@@ -1553,7 +1553,29 @@ function renderModal(){
     return div(null,h('label',{style:{display:'block',fontSize:13,fontWeight:700,marginBottom:7,color:'var(--text)'}},lbl),t);
   }
 
-  if(_aModal==='addCourse'){
+  if(_aModal==='editCourse'){
+    m.appendChild(h('h3',{style:{marginBottom:16,fontSize:18}},'Edit Course'));
+    m.appendChild(fi('Course Title *','title','e.g. Financial Literacy'));
+    m.appendChild(fi('Description','description','What students will learn'));
+    m.appendChild(fi('Emoji Icon','emoji','💰'));
+    m.appendChild(fi('Color (hex)','color','#1E4976'));
+    m.appendChild(fi('Badge Name','badge_name','e.g. Budget Builder'));
+    m.appendChild(btn({class:'btn btn-p','click':async()=>{
+      if(!_adminFormVals.title){alert('Title is required');return;}
+      const saveBtn=m.querySelector('.btn-p');
+      if(saveBtn){saveBtn.textContent='Saving...';saveBtn.disabled=true;}
+      await sbPatch('courses','?id=eq.'+_adminFormVals.id,{
+        title:_adminFormVals.title,
+        description:_adminFormVals.description||'',
+        emoji:_adminFormVals.emoji||'📚',
+        color:_adminFormVals.color||'#1E4976',
+        badge_name:_adminFormVals.badge_name||_adminFormVals.title
+      },S.token);
+      await reloadCourses();
+      closeModal();
+    }},'Save Changes'));
+  }
+  else if(_aModal==='addCourse'){
     m.appendChild(h('h3',{style:{marginBottom:16}},'Add New Course'));
     m.appendChild(fi('Course Title *','title','e.g. Financial Literacy'));
     m.appendChild(fi('Description','description','What students will learn'));
@@ -1729,7 +1751,9 @@ function AdminCourses() {
         div({style:{flex:1}},div({style:{fontWeight:600,fontSize:13}},c.title),div({style:{fontSize:11,color:'var(--muted)'}},(c.modules||[]).length+' modules')),
         span({class:'chip '+(c.published?'chip-g':'chip-a')},c.published?'Live':'Draft')
       ),
+      c.badge_name?div({style:{fontSize:11,color:'var(--teal)',marginBottom:8,fontWeight:600}},'🏆 Badge: '+c.badge_name):null,
       div({style:{display:'flex',gap:6,flexWrap:'wrap'}},
+        btn({class:'btn btn-o btn-sm',style:{marginBottom:0},'click':()=>openModal('editCourse',{id:c.id,title:c.title,description:c.description||'',emoji:c.emoji||'📚',color:c.color||'#1E4976',badge_name:c.badge_name||''})},'✏️ Edit'),
         btn({class:'btn btn-o btn-sm',style:{marginBottom:0},'click':()=>{_aSelC=c;_aTab='content';renderAdmin();}},'Edit Content'),
         btn({class:'btn btn-sm',style:{background:c.published?'#fee2e2':'#dcfce7',color:c.published?'var(--danger)':'var(--success)',border:'none',marginBottom:0},'click':async function(){
           await sbPatch('courses','?id=eq.'+c.id,{published:!c.published},S.token);
