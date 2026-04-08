@@ -1764,9 +1764,14 @@ function renderAdmin() {
       div(null,div({style:{fontSize:9,color:'rgba(255,255,255,.5)',letterSpacing:'.1em',textTransform:'uppercase',marginBottom:2}},'Admin'),div({style:{fontSize:17,fontWeight:700,fontFamily:"'DM Serif Display',serif",color:'#fff'}},'Pathway CMS')),
       btn({class:'btn btn-g',style:{color:'rgba(255,255,255,.6)',width:'auto',marginBottom:0},'click':()=>{_showAdmin=false;showMainApp();}},'← App')
     ),
-    div({style:{display:'flex',gap:5,overflowX:'auto',paddingBottom:2}},
-      ...tabs.map(([t,l])=>btn({style:{padding:'6px 13px',borderRadius:20,border:'none',cursor:'pointer',fontFamily:'inherit',fontWeight:600,fontSize:11,whiteSpace:'nowrap',background:_aTab===t?'rgba(255,255,255,.2)':'transparent',color:_aTab===t?'#fff':'rgba(255,255,255,.5)'},'click':()=>{_aTab=t;_aSelC=null;_aSelM=null;_aSelL=null;renderAdmin();}},l))
-    )
+    (function(){
+      var tabRow=div({style:{display:'flex',gap:5,overflowX:'auto',paddingBottom:2}});
+      tabs.forEach(function(tab){
+        var t=tab[0],l=tab[1];
+        tabRow.appendChild(btn({style:{padding:'6px 13px',borderRadius:20,border:'none',cursor:'pointer',fontFamily:'inherit',fontWeight:600,fontSize:11,whiteSpace:'nowrap',background:_aTab===t?'rgba(255,255,255,.2)':'transparent',color:_aTab===t?'#fff':'rgba(255,255,255,.5)'},'click':function(){_aTab=t;_aSelC=null;_aSelM=null;_aSelL=null;renderAdmin();}},l));
+      });
+      return tabRow;
+    })()
   );
 
   let content;
@@ -1829,80 +1834,150 @@ function AdminCourses() {
 }
 
 function AdminContent() {
-  // Breadcrumb
-  const crumb=div({style:{display:'flex',alignItems:'center',gap:5,marginBottom:11,fontSize:12,flexWrap:'wrap'}},
-    span({style:{color:'var(--primary)',cursor:'pointer',fontWeight:500},'click':()=>{_aSelC=null;_aSelM=null;_aSelL=null;renderAdmin();}},'Courses'),
-    _aSelC?[span({style:{color:'var(--muted)'}},' › '),span({style:{color:_aSelM?'var(--primary)':'var(--text)',fontWeight:500,cursor:_aSelM?'pointer':'default'},'click':()=>{_aSelM=null;_aSelL=null;renderAdmin();}},_aSelC.title.slice(0,22)+'...')]:null,
-    _aSelM?[span({style:{color:'var(--muted)'}},' › '),span({style:{color:_aSelL?'var(--primary)':'var(--text)',fontWeight:500,cursor:_aSelL?'pointer':'default'},'click':()=>{_aSelL=null;renderAdmin();}},_aSelM.title.slice(0,22)+'...')]:null,
-    _aSelL?[span({style:{color:'var(--muted)'}},' › '),span({style:{fontWeight:500}},_aSelL.title.slice(0,22)+'...')]:null
-  );
+  var crumb = div({style:{display:'flex',alignItems:'center',gap:5,marginBottom:11,fontSize:12,flexWrap:'wrap'}});
+  crumb.appendChild(span({style:{color:'var(--primary)',cursor:'pointer',fontWeight:500},'click':function(){_aSelC=null;_aSelM=null;_aSelL=null;renderAdmin();}},'Courses'));
+  if(_aSelC) {
+    crumb.appendChild(span({style:{color:'var(--muted)'}},' › '));
+    crumb.appendChild(span({style:{color:_aSelM?'var(--primary)':'var(--text)',fontWeight:500,cursor:_aSelM?'pointer':'default'},'click':function(){_aSelM=null;_aSelL=null;renderAdmin();}},_aSelC.title.slice(0,22)+'...'));
+  }
+  if(_aSelM) {
+    crumb.appendChild(span({style:{color:'var(--muted)'}},' › '));
+    crumb.appendChild(span({style:{color:_aSelL?'var(--primary)':'var(--text)',fontWeight:500,cursor:_aSelL?'pointer':'default'},'click':function(){_aSelL=null;renderAdmin();}},_aSelM.title.slice(0,22)+'...'));
+  }
+  if(_aSelL) {
+    crumb.appendChild(span({style:{color:'var(--muted)'}},' › '));
+    crumb.appendChild(span({style:{fontWeight:500}},_aSelL.title.slice(0,22)+'...'));
+  }
 
-  let list;
-  if(!_aSelC){
-    list=S.courses.length?div(null,...S.courses.map(c=>div({class:'card',style:{marginBottom:7,padding:'10px 13px',cursor:'pointer',display:'flex',alignItems:'center',gap:9},'click':()=>{_aSelC=c;renderAdmin();}},
-      span({style:{fontSize:20}},c.emoji||'📚'),
-      div({style:{flex:1}},div({style:{fontWeight:600,fontSize:12}},c.title),div({style:{fontSize:10,color:'var(--muted)'}},(c.modules||[]).length+' modules')),
-      span({style:{color:'var(--muted)'}},'›')
-    ))):p({style:{color:'var(--muted)',fontSize:13,textAlign:'center',padding:'20px'}},'No courses. Create one in the Courses tab first.');
-  } else if(!_aSelM){
-    const mods=_aSelC.modules||[];
-    list=div(null,
-      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:9}},h('h3',{style:{fontSize:13}},'Modules'),btn({class:'btn btn-p btn-sm',style:{marginBottom:0},'click':()=>openModal('addModule',{})},'+ Module')),
-      mods.length?div(null,...mods.map(m=>div({class:'card',style:{marginBottom:7,padding:'10px 13px',display:'flex',alignItems:'center',gap:9}},
-        div({style:{display:'flex',alignItems:'center',gap:9,flex:1,cursor:'pointer'},'click':()=>{_aSelM=m;renderAdmin();}},
-          div({style:{width:26,height:26,borderRadius:'50%',background:'var(--sky)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:11,color:'var(--teal)',flexShrink:0}},'M'),
-          div({style:{flex:1}},div({style:{fontWeight:500,fontSize:12}},m.title),div({style:{fontSize:10,color:'var(--muted)'}},(m.lessons||[]).length+' lessons'))
-        ),
-        div({style:{display:'flex',gap:5,flexShrink:0}},
-          btn({class:'btn btn-sm',style:{background:'var(--sky)',color:'var(--teal)',border:'none',marginBottom:0,padding:'6px 10px',fontSize:12},'click':()=>openModal('editModule',{id:m.id,title:m.title})},'✏️'),
-          span({style:{color:'var(--muted)',fontSize:18,cursor:'pointer',padding:'0 4px',lineHeight:'26px'},'click':()=>{_aSelM=m;renderAdmin();}},'›')
-        )
-      ))):p({style:{color:'var(--muted)',fontSize:13,padding:'10px 0'}},'No modules yet.')
-    );
-  } else if(!_aSelL){
-    const lessons=_aSelM.lessons||[];
-    const icons={video:'🎬',text:'📄',link:'🔗',quiz:'❓'};
-    list=div(null,
-      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:9}},h('h3',{style:{fontSize:13}},'Lessons'),btn({class:'btn btn-p btn-sm',style:{marginBottom:0},'click':()=>openModal('addLesson',{type:'text',xp:10})},'+ Lesson')),
-      lessons.length?div(null,...lessons.map(l=>div({class:'card',style:{marginBottom:7,padding:'10px 13px',display:'flex',alignItems:'center',gap:9}},
-        div({style:{display:'flex',alignItems:'center',gap:9,flex:1,cursor:l.type==='quiz'?'pointer':'default'},'click':()=>{if(l.type==='quiz'){_aSelL=l;renderAdmin();}}},
-          span({style:{fontSize:18}},icons[l.type]||'📄'),
-          div({style:{flex:1}},div({style:{fontWeight:500,fontSize:12}},l.title),div({style:{fontSize:10,color:'var(--muted)',textTransform:'capitalize'}},l.type+' · '+(l.xp_reward||l.xp||10)+' XP'+(l.type==='quiz'?' · '+(l.questions||[]).length+' Qs':'')))
-        ),
-        div({style:{display:'flex',gap:5,flexShrink:0}},
-          btn({class:'btn btn-sm',style:{background:'var(--primary-light)',color:'var(--primary)',border:'none',marginBottom:0,padding:'6px 10px',fontSize:12},'click':()=>openModal('editLesson',{id:l.id,title:l.title,type:l.lesson_type||l.type,xp:String(l.xp_reward||l.xp||10),content:l.content||''})},'✏️'),
-          btn({class:'btn btn-sm',style:{background:'#fee2e2',color:'var(--danger)',border:'none',marginBottom:0,padding:'6px 10px',fontSize:12},'click':async()=>{
+  var list;
+
+  if(!_aSelC) {
+    list = div(null);
+    if(!S.courses.length) {
+      list.appendChild(p({style:{color:'var(--muted)',fontSize:13,textAlign:'center',padding:'20px'}},'No courses. Create one in the Courses tab first.'));
+    } else {
+      S.courses.forEach(function(c) {
+        (function(course){
+          list.appendChild(div({class:'card',style:{marginBottom:7,padding:'10px 13px',cursor:'pointer',display:'flex',alignItems:'center',gap:9},'click':function(){_aSelC=course;renderAdmin();}},
+            span({style:{fontSize:20}},course.emoji||'📚'),
+            div({style:{flex:1}},div({style:{fontWeight:600,fontSize:12}},course.title),div({style:{fontSize:10,color:'var(--muted)'}},(course.modules||[]).length+' modules')),
+            span({style:{color:'var(--muted)'}},'›')
+          ));
+        })(c);
+      });
+    }
+  } else if(!_aSelM) {
+    var mods = _aSelC.modules||[];
+    list = div(null);
+    var modTop = div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:9}});
+    modTop.appendChild(h('h3',{style:{fontSize:13}},'Modules'));
+    modTop.appendChild(btn({class:'btn btn-p btn-sm',style:{marginBottom:0},'click':function(){openModal('addModule',{});}},'+ Module'));
+    list.appendChild(modTop);
+    if(!mods.length) {
+      list.appendChild(p({style:{color:'var(--muted)',fontSize:13,padding:'10px 0'}},'No modules yet.'));
+    } else {
+      mods.forEach(function(m) {
+        (function(mod){
+          var row = div({class:'card',style:{marginBottom:7,padding:'10px 13px',display:'flex',alignItems:'center',gap:9}});
+          var rowLeft = div({style:{display:'flex',alignItems:'center',gap:9,flex:1,cursor:'pointer'},'click':function(){_aSelM=mod;renderAdmin();}});
+          rowLeft.appendChild(div({style:{width:26,height:26,borderRadius:'50%',background:'var(--sky)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:11,color:'var(--teal)',flexShrink:0}},'M'));
+          rowLeft.appendChild(div({style:{flex:1}},div({style:{fontWeight:500,fontSize:12}},mod.title),div({style:{fontSize:10,color:'var(--muted)'}},(mod.lessons||[]).length+' lessons')));
+          var rowBtns = div({style:{display:'flex',gap:5,flexShrink:0}});
+          rowBtns.appendChild(btn({class:'btn btn-sm',style:{background:'var(--sky)',color:'var(--teal)',border:'none',marginBottom:0,padding:'6px 10px',fontSize:12},'click':function(){openModal('editModule',{id:mod.id,title:mod.title});}},'✏️'));
+          rowBtns.appendChild(span({style:{color:'var(--muted)',fontSize:18,cursor:'pointer',padding:'0 4px',lineHeight:'26px'},'click':function(){_aSelM=mod;renderAdmin();}},'›'));
+          row.appendChild(rowLeft);
+          row.appendChild(rowBtns);
+          list.appendChild(row);
+        })(m);
+      });
+    }
+  } else if(!_aSelL) {
+    var lessons = _aSelM.lessons||[];
+    var icons = {video:'🎬',text:'📄',link:'🔗',quiz:'❓'};
+    list = div(null);
+    var lesTop = div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:9}});
+    lesTop.appendChild(h('h3',{style:{fontSize:13}},'Lessons'));
+    lesTop.appendChild(btn({class:'btn btn-p btn-sm',style:{marginBottom:0},'click':function(){openModal('addLesson',{type:'text',xp:10});}},'+ Lesson'));
+    list.appendChild(lesTop);
+    if(!lessons.length) {
+      list.appendChild(p({style:{color:'var(--muted)',fontSize:13,padding:'10px 0'}},'No lessons yet.'));
+    } else {
+      lessons.forEach(function(l) {
+        (function(lesson){
+          var row = div({class:'card',style:{marginBottom:7,padding:'10px 13px',display:'flex',alignItems:'center',gap:9}});
+          var rowLeft = div({style:{display:'flex',alignItems:'center',gap:9,flex:1,cursor:lesson.type==='quiz'?'pointer':'default'},'click':function(){if(lesson.type==='quiz'){_aSelL=lesson;renderAdmin();}}});
+          rowLeft.appendChild(span({style:{fontSize:18}},icons[lesson.type]||'📄'));
+          rowLeft.appendChild(div({style:{flex:1}},div({style:{fontWeight:500,fontSize:12}},lesson.title),div({style:{fontSize:10,color:'var(--muted)',textTransform:'capitalize'}},lesson.type+' · '+(lesson.xp_reward||lesson.xp||10)+' XP'+(lesson.type==='quiz'?' · '+(lesson.questions||[]).length+' Qs':''))));
+          var rowBtns2 = div({style:{display:'flex',gap:5,flexShrink:0}});
+          rowBtns2.appendChild(btn({class:'btn btn-sm',style:{background:'var(--primary-light)',color:'var(--primary)',border:'none',marginBottom:0,padding:'6px 10px',fontSize:12},'click':function(){
+            openModal('editLesson',{id:lesson.id,title:lesson.title,type:lesson.lesson_type||lesson.type,xp:String(lesson.xp_reward||lesson.xp||10),content:lesson.content||''});
+          }},'✏️'));
+          rowBtns2.appendChild(btn({class:'btn btn-sm',style:{background:'#fee2e2',color:'var(--danger)',border:'none',marginBottom:0,padding:'6px 10px',fontSize:12},'click':async function(){
             if(!confirm('Delete lesson?')) return;
-            await sbDelete('lessons','?id=eq.'+l.id,S.token);
-            await reloadCourses();_aSelM=S.courses.flatMap(c=>c.modules).find(m=>m.id===_aSelM.id)||_aSelM;renderAdmin();
-          }},'✕')
-        )
-      ))):p({style:{color:'var(--muted)',fontSize:13,padding:'10px 0'}},'No lessons yet.')
-    );
-  } else {
-    const qs=_aSelL.questions||[];
-    list=div(null,
-      div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:9}},h('h3',{style:{fontSize:13}},'Questions ('+qs.length+')'),btn({class:'btn btn-p btn-sm',style:{marginBottom:0},'click':()=>openModal('addQuestion',{correct:'A'})},'+ Question')),
-      qs.length?div(null,...qs.map((q,i)=>div({class:'card',style:{marginBottom:7,padding:'11px 13px'}},
-        div({style:{display:'flex',justifyContent:'space-between',gap:7,marginBottom:6}},
-          p({style:{fontWeight:600,fontSize:11,flex:1,lineHeight:1.4}},'Q'+(i+1)+'. '+q.text),
-          btn({class:'btn btn-sm',style:{background:'#fee2e2',color:'var(--danger)',border:'none',marginBottom:0,flexShrink:0,padding:'3px 9px'},'click':async()=>{
-            if(!confirm('Delete question?')) return;
-            await sbDelete('questions','?id=eq.'+q.id,S.token);
+            await sbDelete('lessons','?id=eq.'+lesson.id,S.token);
             await reloadCourses();
-            const allC=S.courses.flatMap(c=>c.modules).find(m=>m.id===_aSelM.id);
-            _aSelM=allC||_aSelM;
-            _aSelL=(_aSelM.lessons||[]).find(l=>l.id===_aSelL.id)||_aSelL;
+            var found=false;
+            for(var i=0;i<S.courses.length;i++){
+              for(var j=0;j<S.courses[i].modules.length;j++){
+                if(S.courses[i].modules[j].id===_aSelM.id){_aSelM=S.courses[i].modules[j];found=true;break;}
+              }
+              if(found)break;
+            }
             renderAdmin();
-          }},'✕')
-        ),
-        ...['A','B','C','D'].map((lt,idx)=>div({style:{fontSize:10,color:lt===q.ans?'var(--success)':'var(--muted)',fontWeight:lt===q.ans?600:400,marginBottom:1}},(lt===q.ans?'✓':' ')+' '+lt+'. '+(q.opts||[])[idx]))
-      ))):p({style:{color:'var(--muted)',fontSize:13,padding:'10px 0'}},'No questions yet.')
-    );
+          }},'✕'));
+          row.appendChild(rowLeft);
+          row.appendChild(rowBtns2);
+          list.appendChild(row);
+        })(l);
+      });
+    }
+  } else {
+    var qs = _aSelL.questions||[];
+    list = div(null);
+    var qTop = div({style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:9}});
+    qTop.appendChild(h('h3',{style:{fontSize:13}},'Questions ('+qs.length+')'));
+    qTop.appendChild(btn({class:'btn btn-p btn-sm',style:{marginBottom:0},'click':function(){openModal('addQuestion',{correct:'A'});}},'+ Question'));
+    list.appendChild(qTop);
+    if(!qs.length) {
+      list.appendChild(p({style:{color:'var(--muted)',fontSize:13,padding:'10px 0'}},'No questions yet.'));
+    } else {
+      qs.forEach(function(q, i) {
+        (function(question, qi){
+          var card = div({class:'card',style:{marginBottom:7,padding:'11px 13px'}});
+          var qHdr = div({style:{display:'flex',justifyContent:'space-between',gap:7,marginBottom:6}});
+          qHdr.appendChild(p({style:{fontWeight:600,fontSize:11,flex:1,lineHeight:1.4}},'Q'+(qi+1)+'. '+question.text));
+          qHdr.appendChild(btn({class:'btn btn-sm',style:{background:'#fee2e2',color:'var(--danger)',border:'none',marginBottom:0,flexShrink:0,padding:'3px 9px'},'click':async function(){
+            if(!confirm('Delete question?')) return;
+            await sbDelete('questions','?id=eq.'+question.id,S.token);
+            await reloadCourses();
+            var found2=false;
+            for(var ci=0;ci<S.courses.length;ci++){
+              for(var mi=0;mi<S.courses[ci].modules.length;mi++){
+                if(S.courses[ci].modules[mi].id===_aSelM.id){
+                  _aSelM=S.courses[ci].modules[mi];
+                  for(var li2=0;li2<_aSelM.lessons.length;li2++){
+                    if(_aSelM.lessons[li2].id===_aSelL.id){_aSelL=_aSelM.lessons[li2];found2=true;break;}
+                  }
+                  break;
+                }
+              }
+              if(found2)break;
+            }
+            renderAdmin();
+          }},'✕'));
+          card.appendChild(qHdr);
+          ['A','B','C','D'].forEach(function(lt, idx2){
+            card.appendChild(div({style:{fontSize:10,color:lt===question.ans?'var(--success)':'var(--muted)',fontWeight:lt===question.ans?600:400,marginBottom:1}},(lt===question.ans?'✓':' ')+' '+lt+'. '+(question.opts||[])[idx2]));
+          });
+          list.appendChild(card);
+        })(q, i);
+      });
+    }
   }
 
   return div({style:{padding:'13px'}},crumb,list);
 }
+
 
 async function AdminStats(container) {
   if(!container) container=div({style:{padding:'13px'}});
