@@ -170,7 +170,9 @@ function authH(token) {
 async function sbSignUp(email, password) {
   return api('/auth/v1/signup', { method:'POST', headers:H, body:JSON.stringify({email,password}) });
 }
-async function sbSignIn(email, password) {
+async function genId(){return 'id_'+Date.now()+'_'+Math.random().toString(36).substr(2,9);}
+
+function sbSignIn(email, password) {
   return api('/auth/v1/token?grant_type=password', { method:'POST', headers:H, body:JSON.stringify({email,password}) });
 }
 async function sbSignOut(token) {
@@ -201,7 +203,7 @@ async function getUserBadges(userId, token) {
 // Award badge
 async function awardBadge(userId, courseId, courseTitle, emoji, token) {
   const row = {
-    id: crypto.randomUUID(),
+    id: genId(),
     user_id: userId,
     course_id: courseId,
     course_title: courseTitle,
@@ -307,10 +309,10 @@ const S = {
         var _hasBadge=false;for(var _bi=0;_bi<badges.length;_bi++){if(badges[_bi].course_id===course.id){_hasBadge=true;break;}} if(!_hasBadge){
           // Award badge!
           if(this.user&&this.user.id&&this.token){
-            awardBadge(this.user.id,course.id,course.title,course.emoji||'🏆',this.token);
+            awardBadge(this.user.id,course.id,course.badge_name||course.title,course.emoji||'🏆',this.token);
           } else {
             // Local only
-            var row={id:'b'+Date.now(),user_id:(this.user&&this.user.id)||'local',course_id:course.id,course_title:course.title,emoji:course.emoji||'🏆',earned_at:new Date().toISOString()};
+            var row={id:'b'+Date.now(),user_id:(this.user&&this.user.id)||'local',course_id:course.id,course_title:course.badge_name||course.title,emoji:course.emoji||'🏆',earned_at:new Date().toISOString()};
             var existing=this.getBadges();
             existing.push(row);
             localStorage.setItem('pw_badges',JSON.stringify(existing));
@@ -1037,7 +1039,7 @@ function openCreateClassModal(onDone) {
     if(!className.trim()){alert('Enter a class name');return;}
     createB.innerHTML='<div class="spin"></div>';createB.disabled=true;
     const code = Math.random().toString(36).substring(2,7).toUpperCase();
-    const row = {id:crypto.randomUUID(),name:className.trim(),code,created_by:S.user && S.user.id||'',member_ids:[S.user && S.user.id||''],created_at:new Date().toISOString()};
+    const row = {id:genId(),name:className.trim(),code,created_by:S.user && S.user.id||'',member_ids:[S.user && S.user.id||''],created_at:new Date().toISOString()};
     await sbPost('classes',row,S.token);
     overlay.remove();
     onDone();
@@ -1557,9 +1559,10 @@ function renderModal(){
     m.appendChild(fi('Description','description','What students will learn'));
     m.appendChild(fi('Emoji Icon','emoji','💰'));
     m.appendChild(fi('Color (hex)','color','#1E4976'));
+    m.appendChild(fi('Badge Name','badge_name','e.g. Budget Builder'));
     m.appendChild(btn({class:'btn btn-p','click':async()=>{
       if(!_adminFormVals.title){alert('Title is required');return;}
-      const row={id:crypto.randomUUID(),title:_adminFormVals.title,description:_adminFormVals.description||'',emoji:_adminFormVals.emoji||'📚',color:_adminFormVals.color||'#1E4976',published:false,order_index:S.courses.length+1};
+      const row={id:genId(),title:_adminFormVals.title,description:_adminFormVals.description||'',emoji:_adminFormVals.emoji||'📚',color:_adminFormVals.color||'#1E4976',badge_name:_adminFormVals.badge_name||_adminFormVals.title,published:false,order_index:S.courses.length+1};
       const saveBtnEl3=m.querySelector('.btn-p');
       if(saveBtnEl3){saveBtnEl3.textContent='Saving...';saveBtnEl3.disabled=true;}
       await sbPost('courses',row,S.token);
@@ -1571,7 +1574,7 @@ function renderModal(){
     m.appendChild(fi('Module Title *','title','e.g. Building Your First Budget'));
     m.appendChild(btn({class:'btn btn-p','click':async()=>{
       if(!_adminFormVals.title||!_aSelC){alert('Title required');return;}
-      const row={id:crypto.randomUUID(),course_id:_aSelC.id,title:_adminFormVals.title,order_index:(_aSelC.modules||[]).length+1};
+      const row={id:genId(),course_id:_aSelC.id,title:_adminFormVals.title,order_index:(_aSelC.modules||[]).length+1};
       const saveBtnEl=m.querySelector('.btn-p');
       if(saveBtnEl){saveBtnEl.textContent='Saving...';saveBtnEl.disabled=true;}
       await sbPost('modules',row,S.token);
@@ -1610,7 +1613,7 @@ function renderModal(){
     m.appendChild(ca);
     m.appendChild(btn({class:'btn btn-p','click':async()=>{
       if(!_adminFormVals.title||!_aSelM){alert('Title required');return;}
-      const row={id:crypto.randomUUID(),module_id:_aSelM.id,title:_adminFormVals.title,lesson_type:_adminFormVals.type||'text',content:_adminFormVals.content||'',xp_reward:Number(_adminFormVals.xp)||10,order_index:(_aSelM.lessons||[]).length+1};
+      const row={id:genId(),module_id:_aSelM.id,title:_adminFormVals.title,lesson_type:_adminFormVals.type||'text',content:_adminFormVals.content||'',xp_reward:Number(_adminFormVals.xp)||10,order_index:(_aSelM.lessons||[]).length+1};
       const saveBtnEl2=m.querySelector('.btn-p');
       if(saveBtnEl2){saveBtnEl2.textContent='Saving...';saveBtnEl2.disabled=true;}
       await sbPost('lessons',row,S.token);
@@ -1663,7 +1666,7 @@ function renderModal(){
     m.appendChild(div(null,h('label',{style:{display:'block',fontSize:13,fontWeight:700,marginBottom:7}},'Explanation'),ta3));
     m.appendChild(btn({class:'btn btn-p','click':async()=>{
       if(!_adminFormVals.text||!_adminFormVals.optA||!_adminFormVals.optB||!_adminFormVals.optC||!_adminFormVals.optD){alert('Please fill in the question and all 4 options.');return;}
-      const row={id:crypto.randomUUID(),lesson_id:_aSelL.id,question_text:_adminFormVals.text,option_a:_adminFormVals.optA,option_b:_adminFormVals.optB,option_c:_adminFormVals.optC,option_d:_adminFormVals.optD,correct_answer:_adminFormVals.correct||'A',explanation:_adminFormVals.exp||'',order_index:(_aSelL.questions||[]).length+1};
+      const row={id:genId(),lesson_id:_aSelL.id,question_text:_adminFormVals.text,option_a:_adminFormVals.optA,option_b:_adminFormVals.optB,option_c:_adminFormVals.optC,option_d:_adminFormVals.optD,correct_answer:_adminFormVals.correct||'A',explanation:_adminFormVals.exp||'',order_index:(_aSelL.questions||[]).length+1};
       await sbPost('questions',row,S.token);
       await reloadCourses();
       _aSelC=S.courses.find(c=>c.id===_aSelC && _aSelC.id)||_aSelC;
@@ -1681,8 +1684,13 @@ function renderModal(){
 }
 
 async function reloadCourses() {
-  const courses = await loadCourses(S.token, !S.user.isAdmin);
-  S.courses = courses;
+  try {
+    const courses = await loadCourses(S.token, !S.user.isAdmin);
+    S.courses = courses;
+    console.log('Courses reloaded:', courses.length);
+  } catch(e) {
+    console.error('reloadCourses failed:', e);
+  }
 }
 
 function renderAdmin() {
