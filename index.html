@@ -469,6 +469,7 @@ function showSplash() {
       const res=await sbSignIn(e,_form.password);
       if(res.ok&&res.data.access_token){
         S.saveToken(res.data.access_token);
+        if(res.data.refresh_token) localStorage.setItem('pw_rt', res.data.refresh_token);
         const u={id:res.data.user.id,email:e,name:(res.data.user.user_metadata&&res.data.user.user_metadata.name)||''||(e||'').split('@')[0],xp_total:0,isAdmin:e===ADMIN};
         // Load full profile from Supabase — always by email for consistency
         const pr=await sbGet('profiles','?email=eq.'+encodeURIComponent(e),res.data.access_token);
