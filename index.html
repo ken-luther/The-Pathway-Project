@@ -170,7 +170,14 @@ function authH(token) {
 async function sbSignUp(email, password) {
   return api('/auth/v1/signup', { method:'POST', headers:H, body:JSON.stringify({email,password}) });
 }
-async function genId(){return 'id_'+Date.now()+'_'+Math.random().toString(36).substr(2,9);}
+async function genId(){
+  // Generate a proper UUID v4
+  var s='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx';
+  return s.replace(/[xy]/g,function(c){
+    var r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8);
+    return v.toString(16);
+  });
+}
 
 function sbSignIn(email, password) {
   return api('/auth/v1/token?grant_type=password', { method:'POST', headers:H, body:JSON.stringify({email,password}) });
