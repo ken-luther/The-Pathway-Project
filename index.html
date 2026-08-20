@@ -477,6 +477,124 @@ h3{font-size:16px;font-weight:700;}
 @supports not (animation-name:riseIn){ .stagger>*{opacity:1;animation:none;} }
 .no-anim .stagger>*{opacity:1!important;animation:none!important;}
 
+
+/* ================= LESSON CARDS ================= */
+.lc-stage{
+  flex:1; display:flex; flex-direction:column;
+  padding:14px 16px 22px; min-height:0;
+  background:linear-gradient(180deg,#F7F9FE 0%,#EEF3FB 100%);
+}
+
+/* progress dots */
+.lc-dots{display:flex;gap:6px;justify-content:center;margin-bottom:16px;flex-wrap:wrap;}
+.lc-dot-i{
+  width:26px;height:5px;border-radius:99px;background:#D5DEEC;
+  transition:background .3s var(--ease), transform .3s var(--spring);
+  cursor:pointer;
+}
+.lc-dot-i.done{background:#9DB8E4;}
+.lc-dot-i.on{background:var(--primary);transform:scaleX(1.25);}
+
+/* the card */
+.lc-card{
+  background:#fff;border-radius:22px;padding:24px 20px;
+  box-shadow:0 2px 6px rgba(13,36,97,.06), 0 14px 40px rgba(13,36,97,.10);
+  flex:1;overflow-y:auto;min-height:0;
+  border:1px solid rgba(13,36,97,.05);
+}
+.lc-card.in-r{animation:cardInR .42s var(--spring);}
+.lc-card.in-l{animation:cardInL .42s var(--spring);}
+@keyframes cardInR{from{opacity:0;transform:translateX(34px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes cardInL{from{opacity:0;transform:translateX(-34px) scale(.96)}to{opacity:1;transform:none}}
+
+.lc-title{
+  font-family:'DM Serif Display',serif;
+  font-size:23px;line-height:1.25;color:var(--navy);
+  margin-bottom:16px;
+  animation:riseIn .4s var(--spring) both;
+}
+.lc-p{
+  font-size:16px;line-height:1.72;color:var(--text);margin-bottom:13px;
+}
+.lc-p strong{color:var(--navy);font-weight:700;}
+
+/* highlighted figures */
+.fig{
+  display:inline-block;
+  background:linear-gradient(180deg,#FFF6E0,#FFEFC7);
+  color:#8A5A00;font-weight:800;
+  padding:1px 7px;border-radius:7px;
+  box-shadow:inset 0 -2px 0 rgba(217,119,6,.18);
+}
+
+/* list items */
+.lc-item{display:flex;align-items:flex-start;gap:11px;margin-bottom:12px;}
+.lc-dot{
+  width:8px;height:8px;border-radius:50%;margin-top:8px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--primary),#3B82F6);
+  box-shadow:0 0 0 4px rgba(26,86,219,.11);
+}
+.lc-num{
+  width:25px;height:25px;border-radius:9px;flex-shrink:0;
+  background:linear-gradient(145deg,var(--primary),#1E40AF);color:#fff;
+  font-size:12px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 8px rgba(26,86,219,.3);
+}
+.lc-itxt{font-size:15.5px;line-height:1.62;color:var(--text);padding-top:1px;}
+.lc-itxt strong{color:var(--navy);}
+
+.lc-quote{
+  border-left:4px solid var(--xp);
+  background:linear-gradient(90deg,#FFFBF0,transparent);
+  padding:13px 15px;border-radius:0 12px 12px 0;
+  font-size:16px;line-height:1.65;color:var(--navy);
+  font-weight:600;margin:6px 0 14px;
+}
+
+.lc-img{border-radius:15px;overflow:hidden;margin:8px 0 14px;box-shadow:var(--sh-2);}
+
+/* table -> comparison rows */
+.lc-table{margin:6px 0 14px;}
+.lc-thead{
+  display:flex;justify-content:space-between;
+  font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);padding:0 2px 8px;border-bottom:1.5px solid var(--border);margin-bottom:10px;
+}
+.lc-trow{
+  display:grid;grid-template-columns:1fr auto;gap:4px 10px;
+  padding:9px 0;border-bottom:1px solid #F0F3F9;
+}
+.lc-tlab{font-size:14.5px;color:var(--text);line-height:1.45;}
+.lc-tval{font-size:14.5px;font-weight:800;color:var(--navy);white-space:nowrap;}
+.lc-bar{grid-column:1/-1;height:7px;border-radius:99px;background:#EDF1F8;overflow:hidden;margin-top:3px;}
+.lc-fill{
+  height:100%;border-radius:99px;
+  background:linear-gradient(90deg,var(--primary),#60A5FA);
+  animation:barGrow .85s var(--spring) both;
+}
+@keyframes barGrow{from{width:0!important}}
+
+/* reveal animation for card contents */
+.lc-card .reveal{opacity:0;animation:riseIn .42s var(--spring) forwards;}
+
+/* nav */
+.lc-nav{display:flex;gap:10px;align-items:center;margin-top:16px;}
+.lc-back{
+  width:52px;flex:0 0 52px;margin:0;padding:15px 0;font-size:17px;
+}
+.lc-next{flex:1;margin:0;}
+.lc-count{
+  text-align:center;font-size:12px;font-weight:700;color:var(--muted);
+  margin-top:10px;letter-spacing:.03em;
+}
+
+@media (prefers-reduced-motion:reduce){
+  .lc-card .reveal{opacity:1!important;animation:none!important;}
+  .lc-fill{animation:none!important;}
+}
+@supports not (animation-name:riseIn){ .lc-card .reveal{opacity:1;animation:none;} }
+
 </style>
 </head>
 <body>
@@ -1228,6 +1346,7 @@ function showSplash() {
 
 // -- MAIN APP ------------------------------------------------------------------
 
+let _cardIdx=0;
 let _showAdmin=false, _editProfile=false, _selCourse=null, _selLesson=null, _selMod=null, _selResCat=null;
 let _quiz={cur:0,sel:null,answered:false,score:0,done:false,combo:0,_celebrated:false};
 
@@ -1980,7 +2099,7 @@ function renderCourseDetail() {
     const rows=mod.lessons.map(l=>{
       const icons={video:'🎬',text:'📄',link:'🔗',quiz:'❓'};
       const bgs={video:'#FFE4E6',text:'#EFF6FF',link:'#F0FDF4',quiz:'#FEFCE8'};
-      return div({class:'lr tapz','click':()=>{_selLesson=l;_selMod=mod;_quiz={cur:0,sel:null,answered:false,score:0,done:false,combo:0,_celebrated:false};renderLesson();}},
+      return div({class:'lr tapz','click':()=>{_selLesson=l;_selMod=mod;_cardIdx=0;_quiz={cur:0,sel:null,answered:false,score:0,done:false,combo:0,_celebrated:false};renderLesson();}},
         div({class:'li',style:{background:bgs[l.type]||'var(--sky)'}},icons[l.type]||'📄'),
         div({style:{flex:1}},div({style:{fontSize:15,fontWeight:600}},l.title),div({style:{fontSize:12,color:'var(--muted)',marginTop:3,textTransform:'capitalize'}},l.type+' · '+l.xp+' XP')),
         S.isDone(l.id)?span({style:{fontSize:16}},'✅'):span({style:{color:'var(--muted)',fontSize:16}},'›')
@@ -2008,6 +2127,179 @@ function renderCourseDetail() {
       div({style:{padding:'16px 18px 40px'}},...modEls)
     )
   ));
+}
+
+
+/* ==========================================================
+   LESSON CARD ENGINE — turns markdown into swipeable cards
+   ========================================================== */
+
+// Split raw lesson text into card-sized chunks
+function buildCards(raw){
+  var lines = (raw||'').split('\n');
+  var cards = [], cur = null;
+
+  function push(){ if(cur && cur.lines.length) cards.push(cur); cur = null; }
+  function start(title){ push(); cur = {title:title||'', lines:[]}; }
+
+  for(var i=0;i<lines.length;i++){
+    var ln = lines[i];
+    var t  = ln.trim();
+    if(!t){ continue; }
+
+    // [IMAGE:url] always gets its own card
+    var im = t.match(/^\[IMAGE:(.+)\]$/);
+    if(im){ start(''); cur.lines.push({kind:'image', v:im[1].trim()}); push(); continue; }
+
+    // Heading forms: "**Title:**" / "**Title**" / "## Title" / "ALL CAPS LINE"
+    var mBold = t.match(/^\*\*(.+?):?\*\*:?$/);
+    var mHash = t.match(/^#{1,4}\s+(.+)$/);
+    var isCaps = /^[A-Z0-9 ,'&\/()-]{4,48}$/.test(t) && t === t.toUpperCase() && !/^\d+\./.test(t);
+
+    if(mBold || mHash || isCaps){
+      start(mBold ? mBold[1] : (mHash ? mHash[1] : t));
+      continue;
+    }
+
+    if(!cur) start('');
+
+    if(/^\|/.test(t))                       cur.lines.push({kind:'row',  v:t});
+    else if(/^[-*]\s+/.test(t))             cur.lines.push({kind:'bullet', v:t.replace(/^[-*]\s+/,'')});
+    else if(/^\d+[\.\)]\s+/.test(t))        cur.lines.push({kind:'num',   v:t.replace(/^\d+[\.\)]\s+/,''), n:parseInt(t,10)});
+    else if(/^>\s+/.test(t))                cur.lines.push({kind:'quote', v:t.replace(/^>\s+/,'')});
+    else                                    cur.lines.push({kind:'p',     v:t});
+
+    // keep cards digestible
+    if(cur.lines.length >= 7){ push(); }
+  }
+  push();
+
+  // merge any card that is too thin into the next one
+  var out=[];
+  for(var j=0;j<cards.length;j++){
+    var cd=cards[j];
+    if(out.length && cd.lines.length===1 && cd.lines[0].kind==='p' && cd.lines[0].v.length<70 && !cd.title){
+      out[out.length-1].lines.push(cd.lines[0]);
+    } else out.push(cd);
+  }
+  return out.length ? out : [{title:'', lines:[{kind:'p', v:raw||'No content yet.'}]}];
+}
+
+// inline **bold** -> <strong>, plus highlight money/percent figures
+function mdInline(text){
+  var esc = String(text)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  esc = esc.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  esc = esc.replace(/(\$[\d,]+(?:\.\d+)?|\b\d+(?:\.\d+)?%)/g,
+        '<span class="fig">$1</span>');
+  return esc;
+}
+
+function renderCardBody(card){
+  var wrap = div({class:'lc-body'});
+
+  if(card.title){
+    var hEl = document.createElement('div');
+    hEl.className = 'lc-title';
+    hEl.innerHTML = mdInline(card.title);
+    wrap.appendChild(hEl);
+  }
+
+  // group consecutive table rows so we can draw them together
+  var i = 0;
+  while(i < card.lines.length){
+    var it = card.lines[i];
+
+    if(it.kind === 'row'){
+      var rows = [];
+      while(i < card.lines.length && card.lines[i].kind === 'row'){ rows.push(card.lines[i].v); i++; }
+      wrap.appendChild(renderTable(rows));
+      continue;
+    }
+
+    if(it.kind === 'image'){
+      wrap.appendChild(div({class:'lc-img'},
+        h('img',{src:it.v, style:{width:'100%',display:'block'}})));
+      i++; continue;
+    }
+
+    if(it.kind === 'quote'){
+      var q = document.createElement('div');
+      q.className = 'lc-quote reveal';
+      q.innerHTML = mdInline(it.v);
+      wrap.appendChild(q); i++; continue;
+    }
+
+    if(it.kind === 'bullet' || it.kind === 'num'){
+      var li = div({class:'lc-item reveal'});
+      var dot = div({class: it.kind==='num' ? 'lc-num' : 'lc-dot'});
+      if(it.kind==='num') dot.textContent = it.n || '';
+      li.appendChild(dot);
+      var tx = document.createElement('div');
+      tx.className = 'lc-itxt';
+      tx.innerHTML = mdInline(it.v);
+      li.appendChild(tx);
+      wrap.appendChild(li); i++; continue;
+    }
+
+    var pEl = document.createElement('div');
+    pEl.className = 'lc-p reveal';
+    pEl.innerHTML = mdInline(it.v);
+    wrap.appendChild(pEl); i++;
+  }
+
+  // stagger the reveal animation
+  var rev = wrap.querySelectorAll('.reveal');
+  for(var k=0;k<rev.length;k++) rev[k].style.animationDelay = (0.05 + k*0.055) + 's';
+  return wrap;
+}
+
+// markdown table -> header + rows, with bars when the last column is numeric
+function renderTable(rows){
+  var parsed = rows
+    .filter(function(r){ return !/^\|[\s:\-|]+\|?$/.test(r); })
+    .map(function(r){
+      return r.replace(/^\||\|$/g,'').split('|').map(function(x){ return x.trim(); });
+    });
+  if(!parsed.length) return div({});
+
+  var head = parsed[0], body = parsed.slice(1);
+  var t = div({class:'lc-table'});
+
+  // numeric last column -> comparison bars
+  var nums = body.map(function(r){
+    var v = (r[r.length-1]||'').replace(/[^0-9.]/g,'');
+    return v ? parseFloat(v) : NaN;
+  });
+  var allNum = nums.length>1 && nums.every(function(n){ return !isNaN(n); });
+  var max = allNum ? Math.max.apply(null, nums) : 0;
+
+  body.forEach(function(r, idx){
+    var row = div({class:'lc-trow reveal'});
+    var lab = document.createElement('div');
+    lab.className='lc-tlab'; lab.innerHTML = mdInline(r[0]||'');
+    row.appendChild(lab);
+
+    var val = document.createElement('div');
+    val.className='lc-tval'; val.innerHTML = mdInline(r[r.length-1]||'');
+    row.appendChild(val);
+
+    if(allNum && max>0){
+      var bar = div({class:'lc-bar'});
+      var fill = div({class:'lc-fill'});
+      fill.style.width = Math.max(6, Math.round(nums[idx]/max*100)) + '%';
+      bar.appendChild(fill);
+      row.appendChild(bar);
+    }
+    t.appendChild(row);
+  });
+
+  if(head && head.length>1){
+    var hd = div({class:'lc-thead'});
+    hd.innerHTML = '<span>'+mdInline(head[0])+'</span><span>'+mdInline(head[head.length-1])+'</span>';
+    t.insertBefore(hd, t.firstChild);
+  }
+  return t;
 }
 
 function renderLesson() {
@@ -2091,27 +2383,71 @@ function renderLesson() {
 
   // Text lesson
   if(l.type==='text'){
-    var bodyDiv = div({style:{padding:'18px'}});
-    var rawContent = l.content || 'No content yet.';
-    // Parse content - split by newlines, handle [IMAGE:url] markers
-    var parts = rawContent.split('\n');
-    parts.forEach(function(line) {
-      var imgMatch = line.match(/^\[IMAGE:(.+)\]$/);
-      if(imgMatch) {
-        var imgUrl = imgMatch[1].trim();
-        bodyDiv.appendChild(div({style:{margin:'12px 0',borderRadius:12,overflow:'hidden'}},
-          h('img',{src:imgUrl,style:{width:'100%',display:'block',borderRadius:12,maxHeight:'280px',objectFit:'cover'}})
-        ));
-      } else {
-        bodyDiv.appendChild(p({style:{marginBottom:8,fontSize:15,lineHeight:1.8,color:'var(--text)'}},line||'\u00A0'));
+    var cards = buildCards(l.content || 'No content yet.');
+    if(_cardIdx >= cards.length) _cardIdx = 0;
+
+    var stage = div({class:'lc-stage'});
+
+    function paint(dir){
+      while(stage.firstChild) stage.removeChild(stage.firstChild);
+
+      // progress dots
+      var dots = div({class:'lc-dots'});
+      for(var i=0;i<cards.length;i++){
+        (function(i){
+          var dt = div({class:'lc-dot-i' + (i===_cardIdx?' on':'') + (i<_cardIdx?' done':'')});
+          dt.onclick = function(){ if(i!==_cardIdx){ var d = i>_cardIdx ? 1 : -1; _cardIdx=i; FX.haptic(8); paint(d);} };
+          dots.appendChild(dt);
+        })(i);
       }
-    });
-    if(!S.isDone(l.id)) {
-      bodyDiv.appendChild(btn({class:'btn btn-p',style:{marginTop:18},'click':function(){S.complete(l.id,l.xp);back();}},'Mark Complete · +'+l.xp+' XP'));
-    } else {
-      bodyDiv.appendChild(div({class:'sb',style:{textAlign:'center',marginTop:14}},'✅ Lesson completed!'));
+      stage.appendChild(dots);
+
+      // the card itself
+      var card = div({class:'lc-card ' + (dir<0 ? 'in-l' : 'in-r')});
+      card.appendChild(renderCardBody(cards[_cardIdx]));
+      stage.appendChild(card);
+
+      // controls
+      var isLast = _cardIdx >= cards.length-1;
+      var nav = div({class:'lc-nav'});
+
+      if(_cardIdx > 0){
+        nav.appendChild(btn({class:'btn btn-g lc-back','click':function(){
+          _cardIdx--; FX.haptic(8); paint(-1);
+        }},'←'));
+      }
+
+      if(!isLast){
+        nav.appendChild(btn({class:'btn btn-p lc-next','click':function(){
+          _cardIdx++; FX.haptic(10); paint(1);
+        }}, 'Continue'));
+      } else if(!S.isDone(l.id)){
+        nav.appendChild(btn({class:'btn btn-p lc-next','click':function(){
+          S.complete(l.id,l.xp); back();
+        }}, 'Got it! +'+l.xp+' XP'));
+      } else {
+        nav.appendChild(btn({class:'btn btn-p lc-next','click':back}, 'Done'));
+      }
+      stage.appendChild(nav);
+
+      // step counter
+      stage.appendChild(div({class:'lc-count'}, (_cardIdx+1) + ' of ' + cards.length));
     }
-    mount(div({style:{display:'flex',flexDirection:'column',height:'100%'}},div({class:'screen'},header,bodyDiv)));
+
+    // swipe support
+    var sx=0, sy=0;
+    stage.addEventListener('touchstart', function(e){
+      sx=e.touches[0].clientX; sy=e.touches[0].clientY;
+    }, {passive:true});
+    stage.addEventListener('touchend', function(e){
+      var dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+      if(Math.abs(dx)<55 || Math.abs(dy)>Math.abs(dx)) return;
+      if(dx<0 && _cardIdx<cards.length-1){ _cardIdx++; FX.haptic(10); paint(1); }
+      if(dx>0 && _cardIdx>0){ _cardIdx--; FX.haptic(8); paint(-1); }
+    }, {passive:true});
+
+    paint(1);
+    mount(div({style:{display:'flex',flexDirection:'column',height:'100%'}},div({class:'screen'},header,stage)));
     return;
   }
 
