@@ -1264,7 +1264,15 @@ function showSplash() {
 
     const nextB=btn({class:'btn btn-p',disabled:!pok,'click':async()=>{
       if(_sPage<total-1){_sPage++;go('survey');return;}
-      go('mentor');
+      nextB.disabled=true;
+      nextB.textContent='Setting up...';
+      try {
+        await finishSignup();
+      } catch(err) {
+        console.error('finishSignup failed:', err);
+        nextB.disabled=false;
+        nextB.textContent='Start Learning 🚀';
+      }
     }},_sPage<total-1?'Next →':'Start Learning 🚀');
 
     return div({style:{paddingBottom:40}},
